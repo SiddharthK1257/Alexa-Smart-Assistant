@@ -5,7 +5,7 @@ DO $$
 DECLARE
   demo_user_id UUID := 'a0000000-0000-0000-0000-000000000001'::uuid;
 BEGIN
-  -- Insert demo user into auth.users if not existing
+  -- Insert or update demo user into auth.users
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'alexa.demo@example.com' OR id = demo_user_id) THEN
     INSERT INTO auth.users (
       id,
@@ -15,6 +15,10 @@ BEGIN
       email,
       encrypted_password,
       email_confirmed_at,
+      confirmation_token,
+      recovery_token,
+      email_change_token_new,
+      email_change,
       raw_app_meta_data,
       raw_user_meta_data,
       created_at,
@@ -25,14 +29,50 @@ BEGIN
       'authenticated',
       'authenticated',
       'alexa.demo@example.com',
-      crypt('AlexaDemo2026!', gen_salt('bf')),
+      crypt('AlexaDemo2026!', gen_salt('bf', 10)),
       NOW(),
+      '',
+      '',
+      '',
+      '',
       '{"provider": "email", "providers": ["email"]}'::jsonb,
       '{"full_name": "Alexa Demo User", "display_name": "Alexa Demo User"}'::jsonb,
       NOW(),
       NOW()
     );
+  ELSE
+    UPDATE auth.users
+    SET
+      encrypted_password = crypt('AlexaDemo2026!', gen_salt('bf', 10)),
+      email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+      confirmation_token = COALESCE(confirmation_token, ''),
+      recovery_token = COALESCE(recovery_token, ''),
+      email_change_token_new = COALESCE(email_change_token_new, ''),
+      email_change = COALESCE(email_change, ''),
+      updated_at = NOW()
+    WHERE id = demo_user_id OR email = 'alexa.demo@example.com';
   END IF;
+
+  -- Ensure auth.identities has matching entry for GoTrue
+  INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  ) VALUES (
+    demo_user_id,
+    demo_user_id,
+    json_build_object('sub', demo_user_id::text, 'email', 'alexa.demo@example.com'),
+    'email',
+    demo_user_id::text,
+    NOW(),
+    NOW(),
+    NOW()
+  ) ON CONFLICT (provider, provider_id) DO NOTHING;
 
   -- Ensure profile exists
   INSERT INTO public.profiles (id, display_name, email, preferences)

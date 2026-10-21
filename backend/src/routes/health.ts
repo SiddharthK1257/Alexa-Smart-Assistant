@@ -23,7 +23,7 @@ router.get('/', async (_req, res) => {
     status: isHealthy ? 'ok' : 'degraded',
     service: 'Alexa+ Smart Assistant Backend',
     mcpServer: config.MCP_SERVER_NAME,
-    mcpProtocolVersion: '2024-11-05',
+    mcpProtocolVersion: '2025-11-25',
     mcpEndpoint: config.MCP_ENDPOINT_PATH,
     timestamp: new Date().toISOString(),
     uptimeSeconds: Math.floor(process.uptime()),

@@ -69,6 +69,17 @@ const geminiTools = [
         },
       },
       {
+        name: 'complete_task',
+        description: 'Mark an existing task as completed by task UUID.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            task_id: { type: SchemaType.STRING, description: 'UUID of the task to complete' },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
         name: 'create_reminder',
         description: 'Schedule a time-based reminder message at a specific ISO 8601 timestamp.',
         parameters: {
@@ -170,7 +181,8 @@ Rules:
 2. If a database operation fails, acknowledge the failure honestly and provide helpful instructions.
 3. If an action is potentially destructive (like deleting items or cancelling everything), ask for explicit user confirmation first.
 4. Calculate relative dates/times using the user's current context (Current Year is 2026).
-5. Conclude responses with a relevant follow-up offer or helpful question when appropriate.`;
+5. Conclude responses with a relevant follow-up offer or helpful question when appropriate.
+6. If a reminder request lacks an important detail like a specific scheduled time, ask a short, natural clarification question rather than inventing a random timestamp.`;
 
 export async function processAssistantMessage(
   userMessage: string,
@@ -443,7 +455,31 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
                        userMessage.match(/remind me (?:to |about )?([^,.]+)/i);
       if (msgMatch) msg = msgMatch[1].trim();
 
-      const scheduledTime = new Date(Date.now() + 3600 * 1000).toISOString();
+      // Check if time is specified
+      const hasTime = /(?:at|in|on|tomorrow|today|tonight|pm|am|\d{1,2}:\d{2}|o'clock|morning|afternoon|evening)/i.test(userMessage);
+      if (!hasTime) {
+        return {
+          response: `When would you like me to remind you to "${msg}"? Please specify a time, such as "in 30 minutes" or "at 6 PM".`,
+          toolExecutions: [],
+          followUpSuggestions: [
+            `Remind me to ${msg} in 30 minutes`,
+            `Remind me to ${msg} at 6 PM`,
+            `Remind me to ${msg} tomorrow morning`,
+          ],
+        };
+      }
+
+      // Parse relative time or default to 1 hour
+      let offsetMs = 3600 * 1000;
+      const minMatch = userMessage.match(/in\s+(\d+)\s+min(?:ute)?s?/i);
+      const hrMatch = userMessage.match(/in\s+(\d+)\s+hour?s?/i);
+      if (minMatch) {
+        offsetMs = parseInt(minMatch[1], 10) * 60 * 1000;
+      } else if (hrMatch) {
+        offsetMs = parseInt(hrMatch[1], 10) * 3600 * 1000;
+      }
+
+      const scheduledTime = new Date(Date.now() + offsetMs).toISOString();
       const reminder = await executeMcpTool('create_reminder', {
         message: msg,
         scheduled_time: scheduledTime,
@@ -458,7 +494,7 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
       });
 
       return {
-        response: `I've set a reminder for "${reminder.message}" scheduled for ${new Date(reminder.scheduled_time).toLocaleTimeString()}.`,
+        response: `I've set a reminder for "${reminder.message}" scheduled for ${new Date(reminder.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
         toolExecutions,
         followUpSuggestions: ['Show my scheduled reminders', 'Add another reminder'],
       };

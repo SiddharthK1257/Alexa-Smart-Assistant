@@ -18,7 +18,7 @@ router.get('/', (req, res, next) => {
   res.json({
     name: config.MCP_SERVER_NAME,
     version: config.MCP_SERVER_VERSION,
-    protocolVersion: '2024-11-05',
+    protocolVersion: '2025-11-25',
     transport: 'Streamable HTTP (JSON-RPC 2.0)',
     endpoint: '/mcp',
     authentication: 'Bearer Token (Supabase JWT or Alexa+ OAuth 2.1)',

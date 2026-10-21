@@ -40,12 +40,12 @@ export const TaskManager: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user && token) {
+    if (user?.id && token) {
       loadTasks();
     } else {
       setTasks([]);
     }
-  }, [user, token, statusFilter, priorityFilter]);
+  }, [user?.id, token, statusFilter, priorityFilter]);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();

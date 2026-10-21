@@ -9,7 +9,7 @@ describe('Health and Status Endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('status', 'ok');
     expect(res.body).toHaveProperty('service', 'Alexa+ Smart Assistant Backend');
-    expect(res.body).toHaveProperty('mcpProtocolVersion', '2024-11-05');
+    expect(res.body).toHaveProperty('mcpProtocolVersion', '2025-11-25');
     expect(res.body).toHaveProperty('mcpEndpoint', '/mcp');
     expect(res.body.database).toHaveProperty('status', 'healthy');
     expect(res.body.database).toHaveProperty('provider', 'Supabase PostgreSQL');

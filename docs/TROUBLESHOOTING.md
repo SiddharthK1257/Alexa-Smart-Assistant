@@ -61,3 +61,42 @@
   * Check if the voice toggle pill below the Alexa Orb is set to **"Voice Muted"**. Click it to toggle to **"Voice Active"**.
   * Adjust speech rate in `/app/settings` (recommended: `1.0x` natural speed).
   * Modern browsers load natural neural voices asynchronously (`window.speechSynthesis.onvoiceschanged`); the application automatically selects high-definition neural voices (e.g. Google US English, Samantha, Jenny, Aria).
+
+---
+
+## 2. Supabase Authentication Diagnostics & Configuration
+
+### 2.1 The Email Authentication Bug & Resolution
+* **Root Causes Identified:**
+  1. **Missing GoTrue Identity Records in SQL Seed:** The original seed migration inserted records into `auth.users` via raw SQL with default bcrypt rounds 6 and omitted corresponding entries in `auth.identities`. This caused Supabase GoTrue Auth to fail with internal `500 Database error querying schema`.
+  2. **Supabase Free Tier Email Send Rate Limits (`429 over_email_send_rate_limit`):** By default, Supabase's built-in email provider limits projects without custom SMTP to ~3-4 emails per hour. When users entered their email to register or request magic-link/OTP, Supabase rejected the request with `email rate limit exceeded`.
+  3. **Missing Multi-Mode UI & Route Guards:** The original UI lacked password show/hide, forgot password handling, 6-digit OTP verification inputs, and route protection, leaving unauthenticated users on broken views with 401 errors.
+* **Resolution Implemented:**
+  1. Updated `supabase/migrations/20261021000002_seed_dev_data.sql` to generate standard bcrypt rounds 10, populated `confirmation_token`, `recovery_token`, `email_change_token_new`, `email_change` with valid empty strings, and added matching `auth.identities` records.
+  2. Verified active passwords on both pre-seeded accounts so users and judges can authenticate immediately without hitting external email quotas.
+  3. Built a multi-mode `AuthModal.tsx` supporting Email & Password sign-in, Register, Passwordless OTP, Code Verification, and Forgot Password recovery.
+  4. Added `ProtectedRoute.tsx` guards protecting `/app/*` routes from unauthorized access.
+
+### 2.2 Verified Pre-seeded Test Accounts
+The following accounts are pre-seeded and verified with active passwords:
+
+| Email | Password | Display Name | Role | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| `alexa.demo@example.com` | `AlexaDemo2026!` | Alexa Demo User | Authenticated | Instant Demo access & evaluation |
+| `siddharthtiwary012@gmail.com` | `AlexaDemo2026!` | Siddharth Kumar | Authenticated | Primary workspace developer account |
+
+### 2.3 Supabase Dashboard Settings Required for Custom Domains
+When deploying or reconfiguring the Supabase project:
+1. **Site URL:**
+   * Navigate to **Authentication > URL Configuration > Site URL**.
+   * Development: `http://localhost:5173`
+   * Production: `https://your-production-domain.com`
+2. **Redirect URLs:**
+   * Add:
+     - `http://localhost:5173/**`
+     - `http://localhost:4000/**`
+     - `https://your-production-domain.com/**`
+3. **Custom SMTP (To Remove Email Rate Limits):**
+   * If you wish to enable high-volume passwordless magic links or email confirmations, navigate to **Project Settings > Authentication > SMTP Settings** and configure a custom provider (e.g., Resend, SendGrid, Amazon SES). This eliminates the 3-email/hr limit.
+4. **Email Confirmation Toggle:**
+   * Under **Authentication > Providers > Email**, you can toggle "Confirm email" off for local sandbox testing, allowing users to register and sign in immediately.

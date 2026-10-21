@@ -8,7 +8,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%20RLS-3ecf8e.svg)](https://supabase.com/)
 [![Gemini AI](https://img.shields.io/badge/Google%20Gemini-3.8%20Flash-4285f4.svg)](https://ai.google.dev/)
 [![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-Streamable%20HTTP-8b5cf6.svg)](https://modelcontextprotocol.io/)
-[![Tests](https://img.shields.io/badge/Vitest-50%2F50%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Vitest-55%2F55%20Passed-brightgreen.svg)]()
 
 ---
 
@@ -24,10 +24,21 @@
 
 Unlike generic AI wrappers that simulate responses, Alexa+ operates on real infrastructure:
 * **Real Relational Database:** All profiles, tasks, reminders, notes, chat conversations, and audit events are stored in **Supabase PostgreSQL** protected by strict **Row Level Security (RLS)**.
-* **Authentic MCP Server:** Implements the official TypeScript **Model Context Protocol (MCP) SDK** over **Streamable HTTP** at `/mcp`, conforming to JSON-RPC 2.0 specifications.
+* **Authentic MCP Server:** Implements the official TypeScript **Model Context Protocol (MCP) SDK** over **Streamable HTTP** at `/mcp`, conforming to JSON-RPC 2.0 and MCP specification `2025-11-25`.
 * **Google Gemini AI Function Calling:** Powered by `gemini-3.8-flash` with deterministic tool invocation, schema argument validation, and an intelligent fallback router.
 * **Amazon Alexa+ Readiness:** Features RFC 8414 Authorization Server metadata (`/.well-known/oauth-authorization-server`) and RFC 9470 Protected Resource metadata (`/.well-known/oauth-protected-resource`) for OAuth 2.1 code grant with S256 PKCE account linking.
 * **Premium Voice & Microinteraction UI:** Crafted in Midnight Obsidian and Electric Cyan, featuring interactive animated waveforms, speech recognition, neural speech synthesis, and Framer Motion microinteractions.
+
+---
+
+## 🔐 Verified Authentication & Evaluation Accounts
+
+The critical email authentication bug has been fully resolved. The application supports Email & Password login, Passwordless OTP verification, New Account Registration, and Password Recovery. For evaluation and judging without external email quotas, the following pre-seeded verified accounts are ready:
+
+| Account | Email | Password | Role | Features |
+| :--- | :--- | :--- | :--- | :--- |
+| **Instant Demo** | `alexa.demo@example.com` | `AlexaDemo2026!` | Verified User | Pre-populated with demo tasks, reminders, and notes |
+| **Developer User** | `siddharthtiwary012@gmail.com` | `AlexaDemo2026!` | Siddharth Kumar | Verified owner account with full persistent history |
 
 ---
 
@@ -74,9 +85,9 @@ flowchart TD
 ## ✨ Key Product Features
 
 ### 1. Interactive Voice Orb & Speech Engine
-* **Animated Waveform:** Responsive 5-bar soundwave equalizer reflecting `idle`, `listening`, `processing`, and `speaking` states.
-* **Browser Speech Recognition:** Automatic speech-to-text with interim speech streaming and fallback to text input.
-* **Neural Text-to-Speech:** High-definition speech synthesis with configurable speed rate (`0.75x` to `1.5x`) and mute controls.
+* **7-State Voice Machine:** Distinct reactive visual and accessible states (`idle`, `requesting_permission`, `listening`, `processing`, `executing_tool`, `speaking`, and `error`) with dynamic glowing ambient auras, 5-bar animated audio equalizer waveform, and live screen-reader announcements.
+* **Browser Speech Recognition:** Automatic speech-to-text with interim speech streaming, permission requests via `getUserMedia`, single-submission transcript guard, and text input fallback.
+* **Text-to-Speech Output:** Clean synthesized vocal output with markdown/JSON stripping, configurable speech rate (`0.75x` to `1.5x`), mute controls, and instant stop-speaking interrupt.
 
 ### 2. Conversational Assistant & Chat History
 * **Persistent Sessions:** Multi-turn chat sessions saved to Supabase `conversations` and `messages` tables.
@@ -97,13 +108,14 @@ flowchart TD
 
 ## 🛠️ MCP Tool Registry
 
-The MCP server registers 8 deterministic tools:
+The MCP server registers 9 deterministic tools conforming to MCP specification `2025-11-25`:
 
 | Tool Name | Parameters | Description |
 | :--- | :--- | :--- |
 | `create_task` | `title`*, `description`, `priority`, `due_date` | Creates a task in Supabase PostgreSQL |
 | `list_tasks` | `status`, `priority`, `limit` | Queries authenticated user's tasks with filters |
 | `update_task` | `task_id`*, `title`, `description`, `priority`, `status` | Modifies an existing task record |
+| `complete_task` | `task_id`* | Marks a task completed in Supabase PostgreSQL |
 | `create_reminder` | `message`*, `scheduled_time`* | Schedules time-based notification |
 | `list_reminders` | `status`, `limit` | Lists user's scheduled or active reminders |
 | `save_note` | `title`*, `content`*, `tags` | Stores markdown note with category tags |
@@ -149,17 +161,18 @@ npm run db:migrate
 
 ### 4. Running the Application
 
-To run the backend:
+To run both backend and frontend concurrently:
 ```bash
-npm run dev:backend
+npm run dev
 ```
-*Backend starts on `http://localhost:4000`.*
+* Backend starts at `http://localhost:4000` (API, Streamable HTTP MCP, OAuth 2.1)
+* Frontend opens at `http://localhost:5173` (Vite, React 18, Tailwind, Voice Assistant)
 
-To run the frontend:
+Alternatively, run each workspace independently:
 ```bash
-npm run dev:frontend
+npm run dev:backend   # Starts Express backend at http://localhost:4000
+npm run dev:frontend  # Starts React Vite client at http://localhost:5173
 ```
-*Frontend opens on `http://localhost:5173`.*
 
 ---
 

@@ -297,7 +297,7 @@ describe('Comprehensive End-to-End API Endpoints Test Suite', () => {
     it('GET /mcp/tools lists available tools', async () => {
       const res = await request(app).get('/mcp/tools');
       expect(res.status).toBe(200);
-      expect(res.body.tools.length).toBe(8);
+      expect(res.body.tools.length).toBe(9);
     });
 
     it('POST /mcp/execute executes MCP tools with OAuth token', async () => {

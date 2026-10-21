@@ -28,11 +28,12 @@ import { SettingsView } from './components/SettingsView';
 import { PrivacyView } from './components/PrivacyView';
 import { TermsView } from './components/TermsView';
 import { AuthModal } from './components/AuthModal';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
 // Inner shell component to access router hooks
 const AppShell: React.FC = () => {
-  const { user, profile, signOut, quickDemoLogin } = useAuth();
+  const { user, profile, signOut, quickDemoLogin, isPasswordRecovery } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -40,6 +41,13 @@ const AppShell: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Automatically open auth modal when password recovery hash is detected
+  React.useEffect(() => {
+    if (isPasswordRecovery) {
+      setIsAuthModalOpen(true);
+    }
+  }, [isPasswordRecovery]);
 
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
@@ -216,41 +224,78 @@ const AppShell: React.FC = () => {
           <Route
             path="/app"
             element={
-              <div className="flex-1 flex overflow-hidden h-[calc(100vh-6.5rem)]">
-                <ConversationSidebar
-                  currentConversationId={currentConversationId}
-                  onSelectConversation={id => setCurrentConversationId(id)}
-                  onNewConversation={handleNewConversation}
-                  isOpen={isSidebarOpen}
-                  onToggleOpen={() => setIsSidebarOpen(!isSidebarOpen)}
-                />
-                <div className="flex-1 flex flex-col overflow-y-auto">
-                  <ChatView
+              <ProtectedRoute fallbackTitle="Sign In to Access Alexa+ Assistant">
+                <div className="flex-1 flex overflow-hidden h-[calc(100vh-6.5rem)]">
+                  <ConversationSidebar
                     currentConversationId={currentConversationId}
-                    onConversationCreated={id => setCurrentConversationId(id)}
+                    onSelectConversation={id => setCurrentConversationId(id)}
+                    onNewConversation={handleNewConversation}
+                    isOpen={isSidebarOpen}
+                    onToggleOpen={() => setIsSidebarOpen(!isSidebarOpen)}
                   />
+                  <div className="flex-1 flex flex-col overflow-y-auto">
+                    <ChatView
+                      currentConversationId={currentConversationId}
+                      onConversationCreated={id => setCurrentConversationId(id)}
+                    />
+                  </div>
                 </div>
-              </div>
+              </ProtectedRoute>
             }
           />
 
           {/* Task Manager View */}
-          <Route path="/app/tasks" element={<TaskManager />} />
+          <Route
+            path="/app/tasks"
+            element={
+              <ProtectedRoute fallbackTitle="Tasks Require Authentication">
+                <TaskManager />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Reminders Manager View */}
-          <Route path="/app/reminders" element={<ReminderManager />} />
+          <Route
+            path="/app/reminders"
+            element={
+              <ProtectedRoute fallbackTitle="Reminders Require Authentication">
+                <ReminderManager />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Notes Manager View */}
-          <Route path="/app/notes" element={<NoteManager />} />
+          <Route
+            path="/app/notes"
+            element={
+              <ProtectedRoute fallbackTitle="Notes Require Authentication">
+                <NoteManager />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Activity Log Trail View */}
-          <Route path="/app/activity" element={<ActivityLogView />} />
+          <Route
+            path="/app/activity"
+            element={
+              <ProtectedRoute fallbackTitle="Security Activity Log Requires Authentication">
+                <ActivityLogView />
+              </ProtectedRoute>
+            }
+          />
 
           {/* MCP Developer Inspector View */}
           <Route path="/app/mcp" element={<MCPInspector />} />
 
           {/* Settings & Voice Preferences View */}
-          <Route path="/app/settings" element={<SettingsView />} />
+          <Route
+            path="/app/settings"
+            element={
+              <ProtectedRoute fallbackTitle="Account Settings Require Authentication">
+                <SettingsView />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Public Compliance Pages */}
           <Route path="/privacy" element={<PrivacyView />} />

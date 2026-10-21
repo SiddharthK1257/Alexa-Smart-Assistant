@@ -28,6 +28,10 @@ export const updateTaskSchema = z.object({
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
 });
 
+export const completeTaskSchema = z.object({
+  task_id: z.string().uuid('task_id must be a valid UUID'),
+});
+
 export const createReminderSchema = z.object({
   message: z.string().min(1, 'Reminder message is required'),
   scheduled_time: z.string().min(1, 'scheduled_time (ISO 8601 string) is required'),
@@ -68,6 +72,11 @@ export const MCP_TOOLS_CATALOG = [
     name: 'update_task',
     description: 'Update the title, status, priority, or due date of an existing task by its UUID.',
     schema: updateTaskSchema,
+  },
+  {
+    name: 'complete_task',
+    description: 'Mark an existing task as completed by its UUID.',
+    schema: completeTaskSchema,
   },
   {
     name: 'create_reminder',
@@ -127,6 +136,12 @@ export async function executeMcpTool(toolName: string, args: any, userId: string
         break;
       }
 
+      case 'complete_task': {
+        const validated = completeTaskSchema.parse(args);
+        result = await taskService.updateTask(userId, validated.task_id, { status: 'completed' });
+        break;
+      }
+
       case 'create_reminder': {
         const validated = createReminderSchema.parse(args);
         result = await reminderService.createReminder(userId, validated);
@@ -164,7 +179,7 @@ export async function executeMcpTool(toolName: string, args: any, userId: string
           assistant: 'Alexa+ Smart Assistant (Supabase Edition)',
           status: 'healthy',
           version: '1.0.0',
-          mcpProtocolVersion: '2024-11-05',
+          mcpProtocolVersion: '2025-11-25',
           timestamp: new Date().toISOString(),
           uptimeSeconds: Math.floor(process.uptime()),
           userSummary: {

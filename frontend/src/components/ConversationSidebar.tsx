@@ -38,12 +38,12 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   };
 
   useEffect(() => {
-    if (user && token) {
+    if (user?.id && token) {
       loadConversations();
     } else {
       setConversations([]);
     }
-  }, [user, token, currentConversationId]);
+  }, [user?.id, token, currentConversationId]);
 
   const handleStartRename = (e: React.MouseEvent, conv: ConversationItem) => {
     e.stopPropagation();

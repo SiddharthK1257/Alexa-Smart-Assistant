@@ -27,12 +27,15 @@
 ## 2. Molecules
 
 ### 2.1 `AlexaRing` (Orb)
-* **States:**
-  * `idle`: Soft cyan breathing ambient pulse.
-  * `listening`: Active cyan glow with 5-bar animated audio equalizer waveform.
+* **States (7-State Voice Machine):**
+  * `idle`: Soft cyan breathing ambient pulse and resting mic emblem.
+  * `requesting_permission`: Amber/yellow pulsating warning ring indicating browser permission prompt.
+  * `listening`: Active electric cyan glow with 5-bar animated audio equalizer waveform.
   * `processing`: Violet/purple rotating spinner symbolizing Gemini AI tool reasoning.
+  * `executing_tool`: Emerald/green pulse with tool icon indicating active database operation.
   * `speaking`: Blue modulated pulse corresponding to browser speech synthesis.
-* **Controls:** Voice input button, mute toggle pill.
+  * `error`: Crimson/red alert aura with inline retry and text fallback options.
+* **Controls:** Voice input button, stop speaking interrupt button, mute toggle pill.
 
 ### 2.2 `ChatMessageBubble`
 * **Variants:**

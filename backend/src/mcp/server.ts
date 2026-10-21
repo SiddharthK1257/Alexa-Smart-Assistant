@@ -100,6 +100,33 @@ export function createUserMcpServer(userId: string): McpServer {
     }
   );
 
+  // 3b. complete_task
+  server.tool(
+    'complete_task',
+    'Mark an existing task as completed by its UUID.',
+    {
+      task_id: z.string().uuid().describe('The UUID of the task to mark completed'),
+    },
+    async (args) => {
+      try {
+        const result = await executeMcpTool('complete_task', args, userId);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, task: result }, null, 2),
+            },
+          ],
+        };
+      } catch (err: any) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `Error completing task: ${err.message}` }],
+        };
+      }
+    }
+  );
+
   // 4. create_reminder
   server.tool(
     'create_reminder',

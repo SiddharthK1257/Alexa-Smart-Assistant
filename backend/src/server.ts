@@ -10,6 +10,7 @@ import notesRouter from './routes/notes.js';
 import auditRouter from './routes/audit.js';
 import profileRouter from './routes/profile.js';
 import conversationsRouter from './routes/conversations.js';
+import authRouter from './routes/auth.js';
 import {
   getAuthorizationServerMetadata,
   getProtectedResourceMetadata,
@@ -65,6 +66,7 @@ app.use('/api/notes', notesRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/conversations', conversationsRouter);
+app.use('/api/auth', authRouter);
 
 // 6. Public Compliance Pages (Alexa+ Add-on Requirement)
 app.get('/privacy', (_req, res) => {

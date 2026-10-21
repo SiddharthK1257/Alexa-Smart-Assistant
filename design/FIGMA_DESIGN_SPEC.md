@@ -53,7 +53,8 @@
   * Inline edit title and delete conversation actions.
 * **Center Chat Feed:**
   * Floating top bar showing current active conversation title and Supabase connection badge.
-  * Compact Alexa Orb with animated voice state (idle, listening, processing, speaking).
+  * Compact Alexa Orb with 7 animated voice states (`idle`, `requesting_permission`, `listening`, `processing`, `executing_tool`, `speaking`, `error`).
+  * Real-time live transcript bar displaying interim and final speech recognition results with cancel/submit actions.
   * Chat messages with role differentiation (User: cyan-to-blue gradient right-aligned; Assistant: elevated dark card left-aligned).
   * Tool execution accordion showing tool name, execution timestamp, arguments JSON, and database response.
   * Suggested prompt pills for fast interactions ("List my pending tasks", "Add a reminder to drink water").

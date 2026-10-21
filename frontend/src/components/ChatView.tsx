@@ -11,12 +11,15 @@ import {
   ChevronUp,
   Copy,
   Check,
+  X,
+  Radio,
+  StopCircle,
 } from 'lucide-react';
 import { api, ChatMessage, ToolExecution } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
-import { AlexaRing } from './AlexaRing';
+import { AlexaRing, VoiceAssistantState } from './AlexaRing';
 
 interface MessageItem extends ChatMessage {
   id: string;
@@ -46,14 +49,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
   ]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [executingToolName, setExecutingToolName] = useState<string | null>(null);
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([
     'What tasks do I have pending?',
-    'Add a high priority task to review security audit',
-    'Set a reminder to stretch in 30 minutes',
-    'Save a note about project architecture',
-    'What is your system status?',
+    'Add a task to prepare presentation',
+    'Set a reminder to drink water in 20 minutes',
+    'Save a note about voice assistant architecture',
+    'Check assistant operational status',
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -102,13 +106,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
     };
   }, [currentConversationId, token]);
 
-  // Speech Recognition hook
+  // Speech Recognition hook with single-submission guard
   const {
     isListening,
+    isRequestingPermission,
     transcript,
     interimTranscript,
     toggleListening,
+    cancelListening,
+    stopListening,
     error: speechError,
+    clearError,
   } = useSpeechRecognition(finalText => {
     if (finalText.trim()) {
       handleSendMessage(finalText.trim());
@@ -125,11 +133,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isProcessing]);
+  }, [messages, isProcessing, isListening]);
 
-  // Determine current Alexa ring state
-  const ringState: 'idle' | 'listening' | 'processing' | 'speaking' = isListening
+  // Voice State Machine (Section 8)
+  const voiceState: VoiceAssistantState = speechError
+    ? 'error'
+    : isRequestingPermission
+    ? 'requesting_permission'
+    : isListening
     ? 'listening'
+    : executingToolName
+    ? 'executing_tool'
     : isProcessing
     ? 'processing'
     : isSpeaking
@@ -153,7 +167,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           id: String(Date.now() + 1),
           role: 'assistant',
           content:
-            'Please log in with Supabase Auth or use Instant Demo Login below to manage your personal tasks, reminders, and notes.',
+            'Please log in with Supabase Auth or use Instant Demo Login to manage your personal tasks, reminders, and notes.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isError: true,
         },
@@ -173,6 +187,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setInput('');
     setIsProcessing(true);
     stopSpeaking();
+    clearError();
+
+    // Check if query is likely a tool call to update orb state
+    const lower = messageContent.toLowerCase();
+    if (
+      lower.includes('task') ||
+      lower.includes('reminder') ||
+      lower.includes('note') ||
+      lower.includes('status')
+    ) {
+      setExecutingToolName('Supabase MCP Tool');
+    }
 
     try {
       const history: ChatMessage[] = messages.slice(-6).map(m => ({
@@ -220,6 +246,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsProcessing(false);
+      setExecutingToolName(null);
     }
   };
 
@@ -238,14 +265,58 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {/* Top Alexa Orb Section */}
       <div className="shrink-0 mb-2">
         <AlexaRing
-          state={ringState}
+          state={voiceState}
           onToggleMic={toggleListening}
           isMuted={isMuted}
           onToggleMute={toggleMute}
+          onStopSpeaking={stopSpeaking}
+          onRetry={toggleListening}
+          currentToolName={executingToolName || undefined}
+          errorMessage={speechError || undefined}
           size="sm"
         />
+
+        {/* Live Active Voice Transcript Pill */}
+        {isListening && (
+          <div className="mt-2 max-w-md mx-auto p-2.5 rounded-xl bg-cyan-950/70 border border-cyan-400/50 text-cyan-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-pulse">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Radio className="w-4 h-4 text-cyan-400 shrink-0 animate-ping" />
+              <span className="truncate">
+                {transcript || interimTranscript || 'Listening... Speak your request now'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={stopListening}
+                className="px-2 py-1 rounded bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-[11px] transition-all"
+              >
+                Send
+              </button>
+              <button
+                type="button"
+                onClick={cancelListening}
+                title="Cancel voice input"
+                className="p-1 rounded text-cyan-300 hover:text-white transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Error Announcement */}
         {speechError && (
-          <p className="text-center text-xs text-amber-400 mt-1">{speechError}</p>
+          <div className="mt-2 max-w-md mx-auto p-2 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs flex items-center justify-between gap-2">
+            <span>{speechError}</span>
+            <button
+              onClick={clearError}
+              className="p-0.5 text-red-400 hover:text-red-200"
+              title="Dismiss error"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -287,7 +358,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => speak(msg.content)}
-                      title="Speak this response"
+                      title="Speak this response aloud"
                       className="text-gray-500 hover:text-cyan-400 p-0.5 transition-colors"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
@@ -447,12 +518,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
           onChange={e => setInput(e.target.value)}
           placeholder={
             isListening
-              ? 'Listening to speech...'
+              ? 'Listening to your speech...'
               : 'Ask Alexa+ to create tasks, reminders, notes, or answer questions...'
           }
           disabled={isProcessing}
           className="flex-1 bg-transparent border-none outline-none text-sm text-gray-100 placeholder-gray-500 px-2"
         />
+
+        {isSpeaking && (
+          <button
+            type="button"
+            onClick={stopSpeaking}
+            className="p-2.5 rounded-xl bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:bg-blue-600/50 transition-all"
+            title="Stop speaking"
+          >
+            <StopCircle className="w-5 h-5" />
+          </button>
+        )}
 
         <button
           type="submit"

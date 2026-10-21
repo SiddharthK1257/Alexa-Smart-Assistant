@@ -30,12 +30,12 @@ export const ReminderManager: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user && token) {
+    if (user?.id && token) {
       loadReminders();
     } else {
       setReminders([]);
     }
-  }, [user, token]);
+  }, [user?.id, token]);
 
   const handleCreateReminder = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -10,20 +10,21 @@ describe('Model Context Protocol (MCP) Server Tests', () => {
     const res = await request(app).get('/mcp');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('name', 'Alexa+ Smart Assistant MCP Server');
-    expect(res.body).toHaveProperty('protocolVersion', '2024-11-05');
+    expect(res.body).toHaveProperty('protocolVersion', '2025-11-25');
     expect(res.body).toHaveProperty('transport', 'Streamable HTTP (JSON-RPC 2.0)');
-    expect(res.body).toHaveProperty('toolsAvailable', 8);
+    expect(res.body).toHaveProperty('toolsAvailable', 9);
   });
 
-  it('GET /mcp/tools lists all 8 required tools with valid descriptions', async () => {
+  it('GET /mcp/tools lists all 9 required tools with valid descriptions', async () => {
     const res = await request(app).get('/mcp/tools');
     expect(res.status).toBe(200);
-    expect(res.body.tools).toHaveLength(8);
+    expect(res.body.tools).toHaveLength(9);
 
     const toolNames = res.body.tools.map((t: any) => t.name);
     expect(toolNames).toContain('create_task');
     expect(toolNames).toContain('list_tasks');
     expect(toolNames).toContain('update_task');
+    expect(toolNames).toContain('complete_task');
     expect(toolNames).toContain('create_reminder');
     expect(toolNames).toContain('list_reminders');
     expect(toolNames).toContain('save_note');
@@ -31,7 +32,7 @@ describe('Model Context Protocol (MCP) Server Tests', () => {
     expect(toolNames).toContain('get_assistant_status');
   });
 
-  it('MCP Tool Execution: create_task, list_tasks, and get_assistant_status', async () => {
+  it('MCP Tool Execution: create_task, complete_task, list_tasks, and get_assistant_status', async () => {
     // 1. Execute create_task tool
     const task = await executeMcpTool('create_task', {
       title: 'MCP Integration Verification Task',
@@ -42,15 +43,21 @@ describe('Model Context Protocol (MCP) Server Tests', () => {
     expect(task).toHaveProperty('id');
     expect(task.title).toBe('MCP Integration Verification Task');
 
-    // 2. Execute list_tasks tool
+    // 2. Execute complete_task tool
+    const completed = await executeMcpTool('complete_task', {
+      task_id: task.id,
+    }, testUserId);
+    expect(completed.status).toBe('completed');
+
+    // 3. Execute list_tasks tool
     const tasks = await executeMcpTool('list_tasks', { limit: 10 }, testUserId);
     expect(Array.isArray(tasks)).toBe(true);
     expect(tasks.some((t: any) => t.id === task.id)).toBe(true);
 
-    // 3. Execute get_assistant_status tool
+    // 4. Execute get_assistant_status tool
     const status = await executeMcpTool('get_assistant_status', {}, testUserId);
     expect(status).toHaveProperty('status', 'healthy');
-    expect(status).toHaveProperty('mcpProtocolVersion', '2024-11-05');
+    expect(status).toHaveProperty('mcpProtocolVersion', '2025-11-25');
     expect(status).toHaveProperty('database');
     expect(status).toHaveProperty('userSummary');
   });
