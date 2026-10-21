@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0B0F19] text-gray-100 overflow-x-hidden;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0B0F19;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1F2937;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #374151;
+  }
+}
+
+/* Alexa Pulsing Ring Animation */
+.alexa-glow {
+  box-shadow: 0 0 50px -10px rgba(0, 202, 255, 0.4), 0 0 100px -20px rgba(139, 92, 246, 0.3);
+}
+
+.alexa-ring-active {
+  background: conic-gradient(
+    from 0deg,
+    #00CAFF,
+    #0055FF,
+    #8B5CF6,
+    #00FFEA,
+    #00CAFF
+  );
+  animation: ringSpin 4s linear infinite;
+}
+
+@keyframes ringSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

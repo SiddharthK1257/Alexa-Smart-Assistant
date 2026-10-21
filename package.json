@@ -1,0 +1,36 @@
+{
+  "name": "alexa-plus-smart-assistant",
+  "version": "1.0.0",
+  "description": "Alexa+ Smart Assistant (Supabase Edition) with Official MCP Server, Gemini AI, and Alexa+ Integration",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm --workspace=backend run dev",
+    "dev:frontend": "npm --workspace=frontend run dev",
+    "dev": "npm --workspace=backend run dev",
+    "build:backend": "npm --workspace=backend run build",
+    "build:frontend": "npm --workspace=frontend run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "test:backend": "npm --workspace=backend run test",
+    "test": "npm run test:backend",
+    "db:migrate": "npm --workspace=backend run db:migrate"
+  },
+  "keywords": [
+    "alexa-plus",
+    "mcp",
+    "model-context-protocol",
+    "supabase",
+    "gemini",
+    "react",
+    "express"
+  ],
+  "author": "Alexa+ Smart Assistant Engineering Team",
+  "license": "MIT",
+  "dependencies": {
+    "@types/ws": "^8.18.2",
+    "ws": "^8.22.0"
+  }
+}
