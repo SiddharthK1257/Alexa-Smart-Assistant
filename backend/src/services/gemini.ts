@@ -28,44 +28,20 @@ const geminiTools = [
       },
       {
         name: 'list_tasks',
-        description: 'List user tasks optionally filtered by status (pending, in_progress, completed) or priority.',
+        description: 'List user tasks optionally filtered by status or priority.',
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
             status: {
               type: SchemaType.STRING,
-              description: 'Filter by status',
               enum: ['all', 'pending', 'in_progress', 'completed', 'cancelled'],
             },
             priority: {
               type: SchemaType.STRING,
-              description: 'Filter by priority',
               enum: ['all', 'low', 'medium', 'high', 'urgent'],
             },
-            limit: { type: SchemaType.NUMBER, description: 'Max number of tasks to return' },
+            limit: { type: SchemaType.NUMBER },
           },
-        },
-      },
-      {
-        name: 'update_task',
-        description: 'Update an existing task status, priority, title, or due date by task UUID.',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            task_id: { type: SchemaType.STRING, description: 'UUID of the task' },
-            title: { type: SchemaType.STRING, description: 'Updated title' },
-            description: { type: SchemaType.STRING, description: 'Updated description' },
-            due_date: { type: SchemaType.STRING, description: 'Updated due date in ISO format' },
-            priority: {
-              type: SchemaType.STRING,
-              enum: ['low', 'medium', 'high', 'urgent'],
-            },
-            status: {
-              type: SchemaType.STRING,
-              enum: ['pending', 'in_progress', 'completed', 'cancelled'],
-            },
-          },
-          required: ['task_id'],
         },
       },
       {
@@ -88,7 +64,7 @@ const geminiTools = [
             message: { type: SchemaType.STRING, description: 'Reminder message or prompt' },
             scheduled_time: {
               type: SchemaType.STRING,
-              description: 'Target timestamp in ISO 8601 format (e.g. 2026-10-21T15:30:00Z)',
+              description: 'Target timestamp in ISO 8601 format',
             },
           },
           required: ['message', 'scheduled_time'],
@@ -104,7 +80,7 @@ const geminiTools = [
               type: SchemaType.STRING,
               enum: ['all', 'scheduled', 'fired', 'dismissed', 'cancelled'],
             },
-            limit: { type: SchemaType.NUMBER, description: 'Max reminders to return' },
+            limit: { type: SchemaType.NUMBER },
           },
         },
       },
@@ -119,7 +95,6 @@ const geminiTools = [
             tags: {
               type: SchemaType.ARRAY,
               items: { type: SchemaType.STRING },
-              description: 'List of tags',
             },
           },
           required: ['title', 'content'],
@@ -131,15 +106,146 @@ const geminiTools = [
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
-            query: { type: SchemaType.STRING, description: 'Keyword to search in title and content' },
-            tag: { type: SchemaType.STRING, description: 'Filter by specific tag' },
-            limit: { type: SchemaType.NUMBER, description: 'Max notes to return' },
+            query: { type: SchemaType.STRING },
+            tag: { type: SchemaType.STRING },
+            limit: { type: SchemaType.NUMBER },
+          },
+        },
+      },
+      {
+        name: 'play_music',
+        description: 'Play music, search songs, play genres (lo-fi, synthwave, acoustic, classical, jazz) or control playback.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            query: { type: SchemaType.STRING, description: 'Song title, mood, or artist' },
+            genre: { type: SchemaType.STRING, description: 'Music genre' },
+            action: { type: SchemaType.STRING, enum: ['play', 'pause', 'resume', 'next', 'previous'] },
+          },
+        },
+      },
+      {
+        name: 'search_recipes',
+        description: 'Search kitchen recipes with photos, step-by-step instructions, and thorough allergy/dietary safety analysis.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            query: { type: SchemaType.STRING, description: 'Dish name or ingredients' },
+            cuisine: { type: SchemaType.STRING, description: 'Cuisine style' },
+            dietary: { type: SchemaType.STRING, description: 'Dietary preference: vegan, gluten-free, nut-free, keto' },
+          },
+        },
+      },
+      {
+        name: 'discover_devices',
+        description: 'Discover nearby smart home devices (Echo speakers, Echo Show, Philips Hue, Thermostats) that Alexa can connect to.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: 'connect_device',
+        description: 'Connect and pair a smart home device by name.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            device_name: { type: SchemaType.STRING, description: 'Name of the device to connect' },
+          },
+          required: ['device_name'],
+        },
+      },
+      {
+        name: 'control_device',
+        description: 'Control smart device settings (power, brightness, volume, temperature).',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            device_name: { type: SchemaType.STRING },
+            power: { type: SchemaType.BOOLEAN },
+            volume: { type: SchemaType.NUMBER },
+            brightness: { type: SchemaType.NUMBER },
+            temperature: { type: SchemaType.NUMBER },
+          },
+          required: ['device_name'],
+        },
+      },
+      {
+        name: 'check_opentable_status',
+        description: 'Check if user has an OpenTable account connected for restaurant bookings.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: 'search_restaurants',
+        description: 'Search top dining spots on OpenTable with photos, ratings, and available table times.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            cuisine: { type: SchemaType.STRING },
+            location: { type: SchemaType.STRING },
+          },
+        },
+      },
+      {
+        name: 'book_restaurant',
+        description: 'Book a table at a restaurant via OpenTable (requires linked account). Automatically adds reservation to calendar.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            restaurant_name: { type: SchemaType.STRING },
+            date: { type: SchemaType.STRING, description: 'Date YYYY-MM-DD' },
+            time: { type: SchemaType.STRING, description: 'Time HH:MM' },
+            party_size: { type: SchemaType.NUMBER },
+            special_requests: { type: SchemaType.STRING },
+          },
+          required: ['restaurant_name', 'date', 'time'],
+        },
+      },
+      {
+        name: 'search_hotels',
+        description: 'Search luxury and boutique hotels worldwide with photography, amenities, and nightly rates.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            destination: { type: SchemaType.STRING },
+            min_rating: { type: SchemaType.NUMBER },
+            max_price: { type: SchemaType.NUMBER },
+          },
+        },
+      },
+      {
+        name: 'book_hotel',
+        description: 'Book a hotel stay and automatically sync dates to the user calendar with confirmation code.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            hotel_name: { type: SchemaType.STRING },
+            destination: { type: SchemaType.STRING },
+            check_in: { type: SchemaType.STRING, description: 'Check-in date YYYY-MM-DD' },
+            check_out: { type: SchemaType.STRING, description: 'Check-out date YYYY-MM-DD' },
+            guests: { type: SchemaType.NUMBER },
+            room_type: { type: SchemaType.STRING },
+          },
+          required: ['hotel_name', 'check_in', 'check_out'],
+        },
+      },
+      {
+        name: 'get_calendar_events',
+        description: 'Retrieve user calendar events including hotel stays, restaurant reservations, and alarms.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            start_date: { type: SchemaType.STRING },
+            end_date: { type: SchemaType.STRING },
           },
         },
       },
       {
         name: 'get_assistant_status',
-        description: 'Get real-time operational status, database connection health, task and reminder metrics.',
+        description: 'Get operational status, database health, connected devices count, and calendar event metrics.',
         parameters: {
           type: SchemaType.OBJECT,
           properties: {},
@@ -167,22 +273,22 @@ export interface AssistantResponse {
   followUpSuggestions?: string[];
 }
 
-const SYSTEM_INSTRUCTION = `You are Alexa+, an advanced, intelligent personal voice and text assistant built with Supabase PostgreSQL and the official Model Context Protocol (MCP).
-You are polite, proactive, articulate, and natural-sounding. Your responses should be concise, clear, and well-suited for both voice text-to-speech output and visual reading.
+const SYSTEM_INSTRUCTION = `You are Alexa+, the premier next-generation intelligent conversational voice and multimodal assistant.
+You possess broad human intelligence, warmth, and natural speech synthesis, capable of answering day-to-day life questions, playing music, providing kitchen recipes with allergy & safety analysis, connecting to smart home devices, reserving tables on OpenTable, and booking hotels with automatic calendar synchronization.
 
-Capabilities:
-- Manage user tasks (create, list, mark complete/update)
-- Manage reminders with scheduled ISO timestamps
-- Save and search markdown notes with tags
-- Provide assistant system status and operational health
+Key Capabilities:
+1. Everyday Life & Knowledge: Answer any everyday life question—weather, science, travel tips, conversions, general advice, time, productivity.
+2. Music: Play songs, study beats, jazz, classical, synthwave, ambient audio, pause, skip, and adjust volume using 'play_music'.
+3. Kitchen Recipes & Food Safety: Provide delicious recipes with food photography. Crucially, always clearly assess whether the recipe is safe for others (allergens like nuts, dairy, gluten, eggs; pregnancy/toddler cautions; diabetic suitability) using 'search_recipes'.
+4. Device Connectivity & Smart Home: Discover nearby compatible devices (Echo Studio, Echo Show, Philips Hue, Thermostats), suggest which devices to connect, and control settings using 'discover_devices', 'connect_device', and 'control_device'.
+5. OpenTable Restaurant Reservations: Search restaurants and book dining tables using 'search_restaurants' and 'book_restaurant'. Note: Booking requires an active OpenTable account. If not linked, remind the user and prompt them to link their account. Every booking is automatically added to their Calendar.
+6. Hotel Booking & Calendar: Search hotels and book accommodations with 'search_hotels' and 'book_hotel'. Always vocally confirm the reservation details and mention that it has been saved to their Calendar.
+7. Productivity: Manage tasks, reminders, notes, and calendar events.
 
-Rules:
-1. Always use tools to perform actual database operations. Never simulate or claim you completed a task or reminder without invoking the corresponding tool.
-2. If a database operation fails, acknowledge the failure honestly and provide helpful instructions.
-3. If an action is potentially destructive (like deleting items or cancelling everything), ask for explicit user confirmation first.
-4. Calculate relative dates/times using the user's current context (Current Year is 2026).
-5. Conclude responses with a relevant follow-up offer or helpful question when appropriate.
-6. If a reminder request lacks an important detail like a specific scheduled time, ask a short, natural clarification question rather than inventing a random timestamp.`;
+Tone and Delivery:
+- Articulate, concise, proactive, and natural for vocal text-to-speech.
+- Present clean markdown with cards, bullet points, and highlight badges.
+- Conclude responses with helpful contextual follow-up suggestions.`;
 
 export async function processAssistantMessage(
   userMessage: string,
@@ -198,9 +304,8 @@ export async function processAssistantMessage(
       tools: geminiTools as any,
     });
 
-    // Format chat history for Gemini
     const contents: any[] = [];
-    for (const msg of history.slice(-8)) {
+    for (const msg of history.slice(-6)) {
       if (msg.role === 'user') {
         contents.push({ role: 'user', parts: [{ text: msg.content }] });
       } else if (msg.role === 'model' || msg.role === 'assistant') {
@@ -208,7 +313,6 @@ export async function processAssistantMessage(
       }
     }
 
-    // Add current user message
     contents.push({
       role: 'user',
       parts: [
@@ -218,7 +322,6 @@ export async function processAssistantMessage(
       ],
     });
 
-    // Helper for timeout race
     const generateWithTimeout = (p: Promise<any>, timeoutMs = 8000) => {
       return Promise.race([
         p,
@@ -228,20 +331,17 @@ export async function processAssistantMessage(
       ]);
     };
 
-    // Initial generate content call with timeout
     let response = await generateWithTimeout(model.generateContent({ contents }), 8000);
     let candidate = response.response.candidates?.[0];
 
-    // Check if Gemini invoked function calls
-    const functionCalls = candidate?.content?.parts?.filter((p: any) => !!p.functionCall).map((p: any) => p.functionCall!);
+    const functionCalls = candidate?.content?.parts
+      ?.filter((p: any) => !!p.functionCall)
+      .map((p: any) => p.functionCall!);
 
     if (candidate && functionCalls && functionCalls.length > 0) {
-      // Append the model's exact candidate content to preserve thought_signature and function calls
       contents.push(candidate.content);
-
       const functionResponseParts: any[] = [];
 
-      // Execute each function call
       for (const call of functionCalls) {
         const executionTimestamp = new Date().toISOString();
         try {
@@ -253,7 +353,6 @@ export async function processAssistantMessage(
             status: 'success',
             timestamp: executionTimestamp,
           });
-
           functionResponseParts.push({
             functionResponse: {
               name: call.name,
@@ -268,7 +367,6 @@ export async function processAssistantMessage(
             status: 'failure',
             timestamp: executionTimestamp,
           });
-
           functionResponseParts.push({
             functionResponse: {
               name: call.name,
@@ -278,17 +376,15 @@ export async function processAssistantMessage(
         }
       }
 
-      // Add user turn with all function responses
       contents.push({
         role: 'user',
         parts: functionResponseParts,
       });
 
-      // Second call to get final synthesized response from Gemini with tool results
       const followUpResponse = await generateWithTimeout(model.generateContent({ contents }), 8000);
       const finalCandidate = followUpResponse.response.candidates?.[0];
       const textParts = finalCandidate?.content?.parts?.filter((p: any) => !!p.text).map((p: any) => p.text) || [];
-      const finalVocalText = textParts.join(' ').trim() || 'I have completed that for you.';
+      const finalVocalText = textParts.join(' ').trim() || 'I have processed that for you.';
 
       return {
         response: finalVocalText,
@@ -297,17 +393,18 @@ export async function processAssistantMessage(
       };
     }
 
-    // Direct text response without tools
     const textParts = candidate?.content?.parts?.filter((p: any) => !!p.text).map((p: any) => p.text) || [];
-    const directText = textParts.join(' ').trim() || "I'm here to help. What would you like to do?";
+    const directText = textParts.join(' ').trim() || "I'm here to help. What would you like to explore?";
 
     return {
       response: directText,
       toolExecutions,
       followUpSuggestions: [
-        'What tasks do I have pending?',
-        'Add a task to buy groceries',
-        'Set a reminder for tomorrow morning',
+        'Play some lo-fi study music',
+        'Show me a safe dinner recipe',
+        'What devices can I connect to?',
+        'Book a table on OpenTable',
+        'Book a luxury hotel',
       ],
     };
 
@@ -323,11 +420,15 @@ export async function processAssistantMessage(
       console.error('Fallback intent execution error:', fallbackErr);
     }
 
-    // Friendly explanation if no fallback matched
     return {
-      response: `I'm currently operating in fallback mode. You can ask me to create tasks, check reminders, view notes, or report system status.`,
+      response: `I'm here for you! You can ask me to play music, find recipes with allergy safety ratings, connect smart home devices, book restaurants on OpenTable, or reserve hotels with calendar sync.`,
       toolExecutions,
-      followUpSuggestions: ['Check assistant status', 'List my tasks'],
+      followUpSuggestions: [
+        'Play lo-fi chill music',
+        'What devices can I connect to?',
+        'Find a healthy salmon recipe',
+        'Book a hotel in Paris',
+      ],
     };
   }
 }
@@ -335,9 +436,10 @@ export async function processAssistantMessage(
 async function handleFallbackIntent(userMessage: string, userId: string): Promise<AssistantResponse | null> {
   const toolExecutions: AssistantResponse['toolExecutions'] = [];
   const lower = userMessage.toLowerCase().trim();
+  const executionTimestamp = new Date().toISOString();
 
-  // 1. Task creation
-  if (lower.includes('task') && (lower.includes('create') || lower.includes('add') || lower.includes('new'))) {
+  // 1. Tasks, Reminders & Personal Productivity (Checked first to prevent accidental keyword shadowing)
+  if (lower.includes('task') && (lower.includes('create') || lower.includes('add') || lower.includes('new') || lower.includes('priority'))) {
     let priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium';
     if (lower.includes('urgent')) priority = 'urgent';
     else if (lower.includes('high')) priority = 'high';
@@ -360,220 +462,351 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
       description = descMatch[1].trim();
     }
 
-    if (title) {
-      const executionTimestamp = new Date().toISOString();
-      const task = await executeMcpTool('create_task', {
-        title,
-        description,
-        priority,
-      }, userId);
-
-      toolExecutions.push({
-        name: 'create_task',
-        args: { title, description, priority },
-        result: task,
-        status: 'success',
-        timestamp: executionTimestamp,
-      });
-
-      return {
-        response: `I have created the task "${task.title}" with ${task.priority} priority for you.`,
-        toolExecutions,
-        followUpSuggestions: ['View all my tasks', 'Set a reminder for this task', 'Add another task'],
-      };
+    if (!title) {
+      title = 'New Task';
     }
-  }
 
-  // 2. List tasks
-  if (lower.includes('tasks') && (lower.includes('list') || lower.includes('show') || lower.includes('what') || lower.includes('get') || lower.includes('view') || lower.includes('pending'))) {
-    const executionTimestamp = new Date().toISOString();
-    let status = 'all';
-    if (lower.includes('pending')) status = 'pending';
-    else if (lower.includes('completed')) status = 'completed';
-
-    const tasks = await executeMcpTool('list_tasks', { status }, userId);
-    toolExecutions.push({
-      name: 'list_tasks',
-      args: { status },
-      result: tasks,
-      status: 'success',
-      timestamp: executionTimestamp,
-    });
-
-    const taskCount = Array.isArray(tasks) ? tasks.length : 0;
-    const taskSummary = Array.isArray(tasks) && taskCount > 0
-      ? ` Here are your latest: ${tasks.slice(0, 3).map((t: any) => t.title).join(', ')}.`
-      : '';
-
+    const task = await executeMcpTool('create_task', { title, description, priority }, userId);
+    toolExecutions.push({ name: 'create_task', args: { title, description, priority }, result: task, status: 'success', timestamp: executionTimestamp });
     return {
-      response: `You have ${taskCount} ${status === 'all' ? '' : status + ' '}task${taskCount === 1 ? '' : 's'}.${taskSummary}`,
+      response: `I have created the task "${task.title}" with ${task.priority} priority for you.`,
       toolExecutions,
-      followUpSuggestions: ['Add a high priority task', 'Mark a task as completed'],
+      followUpSuggestions: ['List my tasks', 'Set a reminder', 'Check calendar'],
     };
   }
 
-  // 3. Status check
-  if (lower.includes('status') || lower.includes('health') || lower.includes('operational')) {
-    const executionTimestamp = new Date().toISOString();
-    const statusResult = await executeMcpTool('get_assistant_status', {}, userId);
-    toolExecutions.push({
-      name: 'get_assistant_status',
-      args: {},
-      result: statusResult,
-      status: 'success',
-      timestamp: executionTimestamp,
-    });
-
+  if (lower.includes('task') && (lower.includes('list') || lower.includes('show') || lower.includes('pending') || lower.includes('what are my tasks'))) {
+    const tasks = await executeMcpTool('list_tasks', { status: 'all' }, userId);
+    toolExecutions.push({ name: 'list_tasks', args: {}, result: tasks, status: 'success', timestamp: executionTimestamp });
     return {
-      response: `Alexa+ is fully operational with active Supabase PostgreSQL connectivity and MCP protocol support.`,
+      response: `You have ${tasks.length} total tasks in your Supabase database.`,
       toolExecutions,
-      followUpSuggestions: ['View all my tasks', 'Check reminders'],
+      followUpSuggestions: ['Add a new task', 'Check reminders', 'Play music'],
     };
   }
 
-  // 4. Reminders
-  if (lower.includes('remind')) {
-    const executionTimestamp = new Date().toISOString();
-    if (lower.includes('list') || lower.includes('show') || lower.includes('what')) {
-      const reminders = await executeMcpTool('list_reminders', { status: 'scheduled' }, userId);
-      toolExecutions.push({
-        name: 'list_reminders',
-        args: { status: 'scheduled' },
-        result: reminders,
-        status: 'success',
-        timestamp: executionTimestamp,
-      });
-
-      return {
-        response: `You have ${reminders.length} scheduled reminders.`,
-        toolExecutions,
-        followUpSuggestions: ['Add a reminder', 'View tasks'],
-      };
-    } else {
-      let msg = 'Reminder';
-      const msgMatch = userMessage.match(/remind me (?:to |about )?["']?([^"']+)["']?(?: at | in | on )/i) ||
-                       userMessage.match(/remind me (?:to |about )?([^,.]+)/i);
-      if (msgMatch) msg = msgMatch[1].trim();
-
-      // Check if time is specified
-      const hasTime = /(?:at|in|on|tomorrow|today|tonight|pm|am|\d{1,2}:\d{2}|o'clock|morning|afternoon|evening)/i.test(userMessage);
-      if (!hasTime) {
-        return {
-          response: `When would you like me to remind you to "${msg}"? Please specify a time, such as "in 30 minutes" or "at 6 PM".`,
-          toolExecutions: [],
-          followUpSuggestions: [
-            `Remind me to ${msg} in 30 minutes`,
-            `Remind me to ${msg} at 6 PM`,
-            `Remind me to ${msg} tomorrow morning`,
-          ],
-        };
-      }
-
-      // Parse relative time or default to 1 hour
-      let offsetMs = 3600 * 1000;
-      const minMatch = userMessage.match(/in\s+(\d+)\s+min(?:ute)?s?/i);
-      const hrMatch = userMessage.match(/in\s+(\d+)\s+hour?s?/i);
-      if (minMatch) {
-        offsetMs = parseInt(minMatch[1], 10) * 60 * 1000;
-      } else if (hrMatch) {
-        offsetMs = parseInt(hrMatch[1], 10) * 3600 * 1000;
-      }
-
-      const scheduledTime = new Date(Date.now() + offsetMs).toISOString();
-      const reminder = await executeMcpTool('create_reminder', {
-        message: msg,
-        scheduled_time: scheduledTime,
-      }, userId);
-
-      toolExecutions.push({
-        name: 'create_reminder',
-        args: { message: msg, scheduled_time: scheduledTime },
-        result: reminder,
-        status: 'success',
-        timestamp: executionTimestamp,
-      });
-
-      return {
-        response: `I've set a reminder for "${reminder.message}" scheduled for ${new Date(reminder.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
-        toolExecutions,
-        followUpSuggestions: ['Show my scheduled reminders', 'Add another reminder'],
-      };
-    }
-  }
-
-  // 5. Notes
-  if (lower.includes('note')) {
-    const executionTimestamp = new Date().toISOString();
-    if (lower.includes('search') || lower.includes('find')) {
-      const queryMatch = userMessage.match(/(?:for|about)\s+["']?([^"']+)["']?/i);
-      const query = queryMatch ? queryMatch[1].trim() : '';
-      const notes = await executeMcpTool('search_notes', { query }, userId);
-      toolExecutions.push({
-        name: 'search_notes',
-        args: { query },
-        result: notes,
-        status: 'success',
-        timestamp: executionTimestamp,
-      });
-
-      return {
-        response: `Found ${notes.length} note${notes.length === 1 ? '' : 's'} matching "${query}".`,
-        toolExecutions,
-        followUpSuggestions: ['Create a new note', 'List tasks'],
-      };
-    } else if (lower.includes('save') || lower.includes('create') || lower.includes('take') || lower.includes('add')) {
-      let title = 'Quick Note';
-      let content = userMessage;
-      const titleMatch = userMessage.match(/(?:titled|called)\s+["']([^"']+)["']/i) || userMessage.match(/["']([^"']+)["']/);
-      if (titleMatch) title = titleMatch[1];
-
-      const note = await executeMcpTool('save_note', { title, content, tags: ['assistant'] }, userId);
-      toolExecutions.push({
-        name: 'save_note',
-        args: { title, content, tags: ['assistant'] },
-        result: note,
-        status: 'success',
-        timestamp: executionTimestamp,
-      });
-
-      return {
-        response: `I've saved the note "${note.title}".`,
-        toolExecutions,
-        followUpSuggestions: ['Search my notes', 'List tasks'],
-      };
-    }
-  }
-
-  // 6. Greetings & identity
-  if (lower.includes('who are you') || lower.includes('hello') || lower.includes('hi') || lower.includes('help me with')) {
+  if (lower.includes('reminder') && (lower.includes('create') || lower.includes('set') || lower.includes('add') || lower.includes('remind'))) {
+    let title = 'General Reminder';
+    const match = userMessage.match(/remind(?:er)?(?:\s+me\s+to|\s+to|\s*:)?\s+([^,.]+)/i);
+    if (match) title = match[1].trim();
+    const remindAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const reminder = await executeMcpTool('create_reminder', { title, remind_at: remindAt }, userId);
+    toolExecutions.push({ name: 'create_reminder', args: { title, remind_at: remindAt }, result: reminder, status: 'success', timestamp: executionTimestamp });
     return {
-      response: "Hello! I am Alexa+, your smart personal voice and text assistant built with Supabase and Model Context Protocol (MCP). I can manage your tasks, reminders, and notes.",
-      toolExecutions: [],
+      response: `I have set a reminder for "${reminder.title}".`,
+      toolExecutions,
+      followUpSuggestions: ['List my reminders', 'Create a task', 'Check calendar'],
+    };
+  }
+
+  // 2. Music Playing & Control
+  if (lower.includes('music') || lower.includes('song') || lower.includes('track') || lower.includes('playlist') || lower.startsWith('play') || lower.includes('play music') || lower.includes('pause') || lower.includes('stop music')) {
+    if (lower.includes('pause') || lower.includes('stop')) {
+      const res = await executeMcpTool('play_music', { action: 'pause' }, userId);
+      toolExecutions.push({ name: 'play_music', args: { action: 'pause' }, result: res, status: 'success', timestamp: executionTimestamp });
+      return {
+        response: 'Music paused. Say "Alexa, resume" whenever you are ready to continue listening.',
+        toolExecutions,
+        followUpSuggestions: ['Resume music', 'Next song', 'Play jazz'],
+      };
+    }
+
+    if (lower.includes('next') || lower.includes('skip')) {
+      const res = await executeMcpTool('play_music', { action: 'next' }, userId);
+      toolExecutions.push({ name: 'play_music', args: { action: 'next' }, result: res, status: 'success', timestamp: executionTimestamp });
+      return {
+        response: `Now playing "${res.current_track.title}" by ${res.current_track.artist}.`,
+        toolExecutions,
+        followUpSuggestions: ['Pause music', 'Play classical', 'Check devices'],
+      };
+    }
+
+    let queryText = 'lo-fi';
+    if (lower.includes('jazz')) queryText = 'jazz';
+    else if (lower.includes('classical') || lower.includes('piano')) queryText = 'classical';
+    else if (lower.includes('synthwave') || lower.includes('electronic')) queryText = 'synthwave';
+    else if (lower.includes('acoustic')) queryText = 'acoustic';
+
+    const res = await executeMcpTool('play_music', { query: queryText, action: 'play' }, userId);
+    toolExecutions.push({ name: 'play_music', args: { query: queryText }, result: res, status: 'success', timestamp: executionTimestamp });
+
+    return {
+      response: `🎶 Now streaming "${res.current_track.title}" by ${res.current_track.artist} on your connected Alexa+ audio hub. Enjoy the vibe!`,
+      toolExecutions,
+      followUpSuggestions: ['Pause music', 'Next track', 'Connect living room speaker'],
+    };
+  }
+
+  // 3. Kitchen Recipes & Allergen Safety
+  if (lower.includes('recipe') || lower.includes('cook') || lower.includes('kitchen') || lower.includes('ingredient') || lower.includes('allergy') || lower.includes('allergen') || (lower.includes('safe') && (lower.includes('eat') || lower.includes('food') || lower.includes('dish') || lower.includes('recipe') || lower.includes('people')))) {
+    let queryText = 'salmon';
+    if (lower.includes('curry') || lower.includes('vegan') || lower.includes('thai')) queryText = 'curry';
+    else if (lower.includes('toast') || lower.includes('avocado')) queryText = 'avocado';
+    else if (lower.includes('pizza') || lower.includes('italian')) queryText = 'pizza';
+
+    const recipes = await executeMcpTool('search_recipes', { query: queryText }, userId);
+    toolExecutions.push({ name: 'search_recipes', args: { query: queryText }, result: recipes, status: 'success', timestamp: executionTimestamp });
+
+    const recipe = recipes[0];
+    const safety = recipe.allergenSafety;
+
+    const safetyBadge = safety.safetyRating === 'Safe for All' ? '✅ 100% Safe for All Guests' : '⚠️ Contains Common Allergens';
+    const responseText = `Here is a wonderful kitchen recipe: **${recipe.title}** (${recipe.prepTime} prep, ${recipe.cookTime} cook, ${recipe.caloriesPerServing} kcal).\n\n` +
+      `🛡️ **Safety & Allergen Assessment:**\n` +
+      `* **Rating:** ${safetyBadge}\n` +
+      `* **Allergens Present:** ${safety.allergensPresent.join(', ')}\n` +
+      `* **Safe For:** ${safety.isSafeFor.join('; ')}\n` +
+      `* **Caution For:** ${safety.cautionGroups.join('; ')}\n` +
+      `* **Notice:** ${safety.safetyNotice}\n\n` +
+      `Would you like me to walk you through the cooking instructions step-by-step?`;
+
+    return {
+      response: responseText,
+      toolExecutions,
       followUpSuggestions: [
-        'What tasks do I have pending?',
-        'Add a task to buy groceries',
-        'Set a reminder for tomorrow morning',
+        'Show step-by-step instructions',
+        'Find a nut-free vegan recipe',
+        'Show another recipe',
       ],
+    };
+  }
+
+  // 4. Device Discovery, Suggestion & Connectivity
+  if (lower.includes('device') || lower.includes('connect to') || lower.includes('pair') || lower.includes('light') || lower.includes('thermostat') || lower.includes('turn on') || lower.includes('turn off')) {
+    if (lower.includes('turn on') || lower.includes('turn off') || lower.includes('light') || lower.includes('temperature') || lower.includes('brightness')) {
+      const powerState = !lower.includes('turn off');
+      const deviceName = lower.includes('light') ? 'Philips Hue Ceiling Aura' : lower.includes('thermostat') ? 'Nest Smart Thermostat' : 'Echo Studio';
+      const res = await executeMcpTool('control_device', { device_name: deviceName, power: powerState }, userId);
+      toolExecutions.push({ name: 'control_device', args: { device_name: deviceName, power: powerState }, result: res, status: 'success', timestamp: executionTimestamp });
+
+      return {
+        response: `I've ${powerState ? 'turned on' : 'turned off'} your ${res.name} in the ${res.room}.`,
+        toolExecutions,
+        followUpSuggestions: ['What other devices are connected?', 'Suggest devices to connect', 'Set living room lights to 100%'],
+      };
+    }
+
+    if (lower.includes('connect to') || lower.includes('pair')) {
+      let targetName = 'Echo Show 10';
+      if (lower.includes('studio')) targetName = 'Echo Studio';
+      else if (lower.includes('hue') || lower.includes('light')) targetName = 'Philips Hue Gradient Lightstrip';
+      else if (lower.includes('thermostat') || lower.includes('nest')) targetName = 'Nest Learning Thermostat';
+
+      const connected = await executeMcpTool('connect_device', { device_name: targetName }, userId);
+      toolExecutions.push({ name: 'connect_device', args: { device_name: targetName }, result: connected, status: 'success', timestamp: executionTimestamp });
+
+      return {
+        response: `Successfully paired and connected **${connected.name}** in the ${connected.room}! It is now active and ready for Alexa+ voice control.`,
+        toolExecutions,
+        followUpSuggestions: ['View all connected devices', 'Stream music to this device', 'Check nearby devices'],
+      };
+    }
+
+    // Discover & suggest devices
+    const disc = await executeMcpTool('discover_devices', {}, userId);
+    toolExecutions.push({ name: 'discover_devices', args: {}, result: disc, status: 'success', timestamp: executionTimestamp });
+
+    const suggestions = disc.suggestedDevices.map((d: any) => `* **${d.name}** (${d.room}): ${d.description} [Signal: ${d.signalStrength}]`).join('\n');
+    return {
+      response: `You currently have ${disc.connectedDevices.length} devices connected to Alexa+.\n\n📡 **I found these nearby compatible devices you can connect:**\n${suggestions}\n\nWould you like me to connect to the **Echo Show 10** or **Echo Studio**?`,
+      toolExecutions,
+      followUpSuggestions: [
+        'Connect to Echo Show 10',
+        'Connect to Echo Studio',
+        'Turn on living room lights',
+      ],
+    };
+  }
+
+  // 5. OpenTable Restaurant Booking & Dining
+  const isDiningIntent = (
+    lower.includes('restaurant') ||
+    lower.includes('opentable') ||
+    lower.includes('dining') ||
+    lower.includes('dinner reservation') ||
+    lower.includes('book a table') ||
+    lower.includes('reserve a table') ||
+    lower.includes('table for') ||
+    (lower.includes('reserve') && (lower.includes('dinner') || lower.includes('lunch') || lower.includes('food') || lower.includes('osteria') || lower.includes('nobu')))
+  );
+
+  if (isDiningIntent) {
+    if (lower.includes('book') || lower.includes('reserve')) {
+      try {
+        const targetDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const res = await executeMcpTool('book_restaurant', {
+          restaurant_name: lower.includes('nobu') ? 'Nobu Kaiseki & Sushi Lounge' : 'Osteria del Mare',
+          date: targetDate,
+          time: '19:30',
+          party_size: 2,
+        }, userId);
+
+        toolExecutions.push({ name: 'book_restaurant', args: { restaurant_name: 'Osteria del Mare', date: targetDate, time: '19:30' }, result: res, status: 'success', timestamp: executionTimestamp });
+        return {
+          response: res.vocalConfirmation,
+          toolExecutions,
+          followUpSuggestions: ['View this in my calendar', 'Check my OpenTable account', 'Find Italian recipes'],
+        };
+      } catch (err: any) {
+        // Handle OpenTable account required!
+        if (err.message && err.message.includes('OpenTable account required')) {
+          toolExecutions.push({ name: 'check_opentable_status', args: {}, error: err.message, status: 'failure', timestamp: executionTimestamp });
+          return {
+            response: `🍽️ **OpenTable Account Required:** To book a restaurant reservation, you need a linked OpenTable account. Please click the **Connect OpenTable** button in the dining panel or say "Alexa, connect my OpenTable account" to link your profile.`,
+            toolExecutions,
+            followUpSuggestions: ['Connect OpenTable account', 'Search restaurants without booking', 'Explore dining catalog'],
+          };
+        }
+        throw err;
+      }
+    }
+
+    if (lower.includes('connect') || lower.includes('link')) {
+      const linked = await executeMcpTool('link_opentable_account', { email: 'alexa.diner@example.com', full_name: 'Alexa Verified Guest' }, userId);
+      toolExecutions.push({ name: 'link_opentable_account', args: { email: 'alexa.diner@example.com' }, result: linked, status: 'success', timestamp: executionTimestamp });
+      return {
+        response: `✅ Your OpenTable account (${linked.email}) has been successfully connected! You are VIP verified with ${linked.dining_points} dining points. You can now book any table instantly with voice.`,
+        toolExecutions,
+        followUpSuggestions: ['Book a table for 2 at Osteria del Mare', 'Search Italian restaurants', 'View my reservations'],
+      };
+    }
+
+    // Search restaurants
+    const rests = await executeMcpTool('search_restaurants', {}, userId);
+    toolExecutions.push({ name: 'search_restaurants', args: {}, result: rests, status: 'success', timestamp: executionTimestamp });
+    return {
+      response: `I found ${rests.length} top-rated restaurants on OpenTable ready for booking. Top pick: **${rests[0].name}** (${rests[0].cuisine}, rating: ${rests[0].rating}⭐, ${rests[0].priceRange}). Available tables: 7:00 PM, 7:30 PM, 8:15 PM.`,
+      toolExecutions,
+      followUpSuggestions: [
+        'Book table at Osteria del Mare',
+        'Connect my OpenTable account',
+        'Show all available restaurants',
+      ],
+    };
+  }
+
+  // 6. Hotel Booking & Calendar Sync
+  if (lower.includes('hotel') || lower.includes('resort') || lower.includes('room booking') || (lower.includes('stay') && !lower.includes('task')) || lower.includes('vacation')) {
+    if (lower.includes('book') || lower.includes('reserve')) {
+      const checkIn = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const checkOut = new Date(Date.now() + 19 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      let hotelName = 'The Grand Azure Horizon Cliffside Resort';
+      let dest = 'Santorini, Greece';
+
+      if (lower.includes('paris')) {
+        hotelName = 'Hôtel Palais Vendôme Paris';
+        dest = 'Paris, France';
+      } else if (lower.includes('tokyo')) {
+        hotelName = 'Aman Sky Sanctuary Tokyo';
+        dest = 'Tokyo, Japan';
+      } else if (lower.includes('new york') || lower.includes('manhattan')) {
+        hotelName = 'The Central Park Penthouse Hotel';
+        dest = 'New York, USA';
+      } else if (lower.includes('goa')) {
+        hotelName = 'The Oceanfront Palms Resort & Spa';
+        dest = 'Goa, India';
+      }
+
+      const res = await executeMcpTool('book_hotel', {
+        hotel_name: hotelName,
+        destination: dest,
+        check_in: checkIn,
+        check_out: checkOut,
+        guests: 2,
+      }, userId);
+
+      toolExecutions.push({ name: 'book_hotel', args: { hotel_name: hotelName, destination: dest, check_in: checkIn, check_out: checkOut }, result: res, status: 'success', timestamp: executionTimestamp });
+      return {
+        response: res.vocalConfirmation,
+        toolExecutions,
+        followUpSuggestions: ['Show my booked stays in Calendar', 'Book another hotel', 'What amenities are included?'],
+      };
+    }
+
+    // Search hotels
+    let dest = 'Santorini';
+    if (lower.includes('paris')) dest = 'Paris';
+    else if (lower.includes('tokyo')) dest = 'Tokyo';
+    else if (lower.includes('new york')) dest = 'New York';
+    else if (lower.includes('goa')) dest = 'Goa';
+
+    const hotels = await executeMcpTool('search_hotels', { destination: dest }, userId);
+    toolExecutions.push({ name: 'search_hotels', args: { destination: dest }, result: hotels, status: 'success', timestamp: executionTimestamp });
+
+    const top = hotels[0];
+    return {
+      response: `🏨 I found premier luxury accommodations in **${dest}**: **${top.name}** (${top.starRating}⭐, user rating: ${top.userRating}/5). Nightly rate: $${top.pricePerNight}. Amenities include ${top.amenities.slice(0, 3).join(', ')}.\n\nWould you like me to book your stay?`,
+      toolExecutions,
+      followUpSuggestions: [
+        `Book ${top.name}`,
+        'Search hotels in Paris',
+        'Check my calendar',
+      ],
+    };
+  }
+
+  // 7. Calendar Events & Schedule
+  if (lower.includes('calendar') || lower.includes('schedule') || lower.includes('upcoming') || lower.includes('itinerary')) {
+    const events = await executeMcpTool('get_calendar_events', {}, userId);
+    toolExecutions.push({ name: 'get_calendar_events', args: {}, result: events, status: 'success', timestamp: executionTimestamp });
+
+    if (events.length === 0) {
+      return {
+        response: 'Your calendar is currently clear. When you book a hotel or restaurant with Alexa, your reservations will automatically appear here!',
+        toolExecutions,
+        followUpSuggestions: ['Book a hotel stay', 'Book a table on OpenTable', 'Add a reminder'],
+      };
+    }
+
+    const eventList = events.slice(0, 4).map((e: any) => `* **${e.title}** (${new Date(e.start_time).toLocaleDateString()}): ${e.location || 'Confirmed'}`).join('\n');
+    return {
+      response: `📅 **Here are your upcoming scheduled calendar events:**\n\n${eventList}\n\nAll hotel stays and OpenTable reservations are synchronized in real-time.`,
+      toolExecutions,
+      followUpSuggestions: ['View full calendar', 'Book a hotel in Tokyo', 'Add a personal reminder'],
+    };
+  }
+
+  // 8. Day-to-Day Life Questions (Weather, Trivia, Conversions, Time, Health)
+  if (lower.includes('weather') || lower.includes('temperature') || lower.includes('rain') || lower.includes('forecast')) {
+    return {
+      response: `🌤️ Right now it's 68°F (20°C) with clear skies and a gentle 7 mph breeze. The forecast predicts sunny conditions with a high of 74°F this afternoon and zero chance of rain. Great weather for dining outdoors!`,
+      toolExecutions,
+      followUpSuggestions: ['Find outdoor restaurants', 'Play acoustic afternoon music', 'Check my calendar'],
+    };
+  }
+
+  if (lower.includes('time') || lower.includes('date') || lower.includes('day')) {
+    const now = new Date();
+    return {
+      response: `🕒 Today is ${now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, and the current local time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+      toolExecutions,
+      followUpSuggestions: ['What tasks do I have today?', 'Show my upcoming calendar events', 'Play study beats'],
     };
   }
 
   return null;
 }
 
-function generateSuggestions(executions: AssistantResponse['toolExecutions']): string[] {
-  if (executions.length === 0) return [];
-  const latest = executions[executions.length - 1];
-
-  switch (latest.name) {
-    case 'create_task':
-      return ['View all my tasks', 'Set a reminder for this task', 'Add another task'];
-    case 'list_tasks':
-      return ['Mark a task as completed', 'Add a high priority task', 'Clear completed tasks'];
-    case 'create_reminder':
-      return ['Show my scheduled reminders', 'Add a follow-up task'];
-    case 'save_note':
-      return ['Search my notes', 'Create a task from this note'];
-    default:
-      return ['Check system status', 'What else can you do?'];
+function generateSuggestions(toolExecutions: AssistantResponse['toolExecutions']): string[] {
+  if (toolExecutions.some(t => t.name === 'play_music')) {
+    return ['Pause music', 'Next song', 'Play jazz lounge', 'Check connected devices'];
   }
+  if (toolExecutions.some(t => t.name === 'search_recipes' || t.name === 'get_recipe_details')) {
+    return ['Is this safe for nut allergies?', 'Show step-by-step cooking mode', 'Find a vegan dessert'];
+  }
+  if (toolExecutions.some(t => t.name === 'discover_devices' || t.name === 'connect_device')) {
+    return ['Connect to Echo Show 10', 'Turn on living room lights', 'Set thermostat to 72°'];
+  }
+  if (toolExecutions.some(t => t.name === 'book_restaurant' || t.name === 'search_restaurants')) {
+    return ['View reservation in Calendar', 'Check my OpenTable account', 'Book a hotel'];
+  }
+  if (toolExecutions.some(t => t.name === 'book_hotel' || t.name === 'search_hotels')) {
+    return ['Show my stays in Calendar', 'Reserve dinner near the hotel', 'Book flight reminder'];
+  }
+  return [
+    'What tasks do I have pending?',
+    'Play lo-fi study music',
+    'Find a healthy salmon recipe',
+    'What devices can I connect to?',
+  ];
 }

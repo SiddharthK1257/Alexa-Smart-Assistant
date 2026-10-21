@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { AlexaRing, VoiceAssistantState } from './AlexaRing';
+import { AssistantActionCard } from './AssistantActionCard';
 
 interface MessageItem extends ChatMessage {
   id: string;
@@ -43,7 +44,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       id: 'welcome-1',
       role: 'assistant',
       content:
-        'Hello! I am your Alexa+ Smart Assistant, powered by Google Gemini and Supabase PostgreSQL with the Model Context Protocol. How can I help you manage your tasks, reminders, or notes today?',
+        'Hello! I am your Alexa+ Smart Assistant. You can ask me day-to-day life questions, play music, find kitchen recipes with allergen and safety ratings, connect smart devices, book restaurants on OpenTable, or book luxury hotels with automatic calendar sync. How can I help you today?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -53,11 +54,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([
-    'What tasks do I have pending?',
-    'Add a task to prepare presentation',
-    'Set a reminder to drink water in 20 minutes',
-    'Save a note about voice assistant architecture',
-    'Check assistant operational status',
+    'Play lo-fi study beats',
+    'Show me a healthy dinner recipe',
+    'What smart devices can I connect to?',
+    'Book a table for 2 on OpenTable',
+    'Book a hotel in Paris',
+    'Show my calendar schedule',
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -72,7 +74,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             id: 'welcome-1',
             role: 'assistant',
             content:
-              'Hello! I am your Alexa+ Smart Assistant, powered by Google Gemini and Supabase PostgreSQL with the Model Context Protocol. How can I help you manage your tasks, reminders, or notes today?',
+              'Hello! I am your Alexa+ Smart Assistant. You can ask me day-to-day life questions, play music, find kitchen recipes with allergen and safety ratings, connect smart devices, book restaurants on OpenTable, or book luxury hotels with automatic calendar sync. How can I help you today?',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
@@ -388,6 +390,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 }`}
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>
+
+                {/* Rich Multimodal Action Cards (Music, Recipes, Devices, Dining, Hotels, Calendar) */}
+                {msg.toolExecutions && msg.toolExecutions.length > 0 && (
+                  <div className="space-y-2">
+                    {msg.toolExecutions.map((tool, idx) => (
+                      <AssistantActionCard key={`action-${idx}`} tool={tool} onSendMessage={handleSendMessage} />
+                    ))}
+                  </div>
+                )}
 
                 {/* Tool Execution Cards */}
                 {msg.toolExecutions && msg.toolExecutions.length > 0 && (

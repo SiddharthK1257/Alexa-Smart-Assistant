@@ -8,7 +8,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%20RLS-3ecf8e.svg)](https://supabase.com/)
 [![Gemini AI](https://img.shields.io/badge/Google%20Gemini-3.8%20Flash-4285f4.svg)](https://ai.google.dev/)
 [![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-Streamable%20HTTP-8b5cf6.svg)](https://modelcontextprotocol.io/)
-[![Tests](https://img.shields.io/badge/Vitest-55%2F55%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Vitest-68%2F68%20Passed-brightgreen.svg)]()
 
 ---
 
@@ -38,7 +38,7 @@ The critical email authentication bug has been fully resolved. The application s
 | Account | Email | Password | Role | Features |
 | :--- | :--- | :--- | :--- | :--- |
 | **Instant Demo** | `alexa.demo@example.com` | `AlexaDemo2026!` | Verified User | Pre-populated with demo tasks, reminders, and notes |
-| **Developer User** | `siddharthtiwary012@gmail.com` | `AlexaDemo2026!` | Siddharth Kumar | Verified owner account with full persistent history |
+| **Developer User** | `siddharthtiwary012@gmail.com` | `AlexaDemo2026!` | Verified Owner | Verified owner account with full persistent history |
 
 ---
 
@@ -82,7 +82,7 @@ flowchart TD
 
 ---
 
-## ✨ Key Product Features
+## ✨ Key Product Features & Extended Capabilities
 
 ### 1. Interactive Voice Orb & Speech Engine
 * **7-State Voice Machine:** Distinct reactive visual and accessible states (`idle`, `requesting_permission`, `listening`, `processing`, `executing_tool`, `speaking`, and `error`) with dynamic glowing ambient auras, 5-bar animated audio equalizer waveform, and live screen-reader announcements.
@@ -91,24 +91,49 @@ flowchart TD
 
 ### 2. Conversational Assistant & Chat History
 * **Persistent Sessions:** Multi-turn chat sessions saved to Supabase `conversations` and `messages` tables.
-* **Conversation History Drawer:** Create new conversations, switch active threads, and inline rename/delete chat history.
+* **Rich Action Cards:** Interactive visual widgets for streaming music, viewing kitchen recipe cards with photography and allergen badges, discovering nearby smart home devices, and viewing hotel / dining reservations.
 * **Tool Execution Accordions:** View real-time tool names, arguments JSON payloads, execution status, and database responses.
 * **Follow-up Chips:** Contextual prompt recommendations based on recent actions.
-* **One-Click Copy:** Instant clipboard copy for assistant responses.
+* **One-Click Copy & Speak:** Instant clipboard copy and vocal replay for assistant responses.
 
-### 3. Productivity Dashboards
+### 3. 🎵 Music Playback & Audio Hub (`/app/music`)
+* **Music Streaming & Audio Engine:** Interactive music player with audio synthesis preview, volume control, track progression, and genre-based playback (Lo-Fi Study, Sunset Jazz, Cyberpunk Synthwave, Acoustic Coffeehouse, Classical Focus).
+* **Now Playing HUD:** Persistent mini-player bar synced across navigation views with spinning vinyl disc animation and quick pause/play controls.
+
+### 4. 🍳 Kitchen Recipes & Allergen Safety Hub (`/app/recipes`)
+* **Culinary Catalog with High-Resolution Photography:** Search recipes by title, ingredients, or dietary preferences (Nut-Free, Vegan, Dairy-Free, Gluten-Free, Keto-Friendly).
+* **Automated Allergen & Guest Safety Assessment:** Clear badges indicating "100% Safe for All Guests" vs. "Contains Common Allergens", detailed breakdown of allergens present, groups at caution, and safety notices.
+* **Interactive Step-by-Step Cooking Mode:** Check off ingredients as you prepare and progress through kitchen instructions guided by Alexa.
+
+### 5. 📡 Connected Devices & Smart Home Discovery (`/app/devices`)
+* **Nearby Compatible Device Discovery:** Scans and suggests nearby smart devices (Echo Show 10, Philips Hue, Nest Learning Thermostat, Echo Studio) with signal strength indicators and one-click pairing.
+* **Smart Home Control Center:** Toggle power states, adjust brightness levels, modify thermostat temperatures, and route multi-room audio.
+
+### 6. 🍽️ OpenTable Dining & Verified Account Integration (`/app/dining`)
+* **OpenTable Account Guard:** Seamlessly links OpenTable guest accounts with dining points and VIP verification. Enforces linked account requirement for reservations.
+* **Instant Table Reservations:** Reserve dining slots with party size and special requests. Generates confirmation codes and automatically adds bookings to your calendar.
+
+### 7. 🏨 Luxury Hotel Concierge & Travel Stays (`/app/hotels`)
+* **Luxury Resort & Boutique Accommodations:** Browse curated premier stays in Santorini, Paris, Tokyo, New York, and Goa with photo galleries, amenities list, and transparent nightly rates.
+* **Voice-Confirmed Bookings:** Confirm stays with date pickers and vocal confirmation read aloud by Alexa ("Your stay at The Grand Azure Horizon Cliffside Resort is confirmed...").
+
+### 8. 📅 Synchronized Calendar Schedule (`/app/calendar`)
+* **Unified Schedule Engine:** Automatically synchronizes confirmed hotel stays, OpenTable restaurant reservations, and personal alarms into a single interactive calendar.
+* **Real-time Filter & Event Management:** Filter events by type (hotel, restaurant, reminder, personal) and create custom travel itineraries.
+
+### 9. Productivity Dashboards
 * **Tasks Manager (`/app/tasks`):** Create, filter (by status and priority), complete, and delete tasks with due dates.
 * **Reminders Manager (`/app/reminders`):** Schedule time-based reminders with formatted dates and one-click dismissal.
 * **Note Library (`/app/notes`):** Full-text keyword search and dynamic tag filtering over markdown notes.
 * **Activity & Audit Trail (`/app/activity`):** Real-time security logs of all MCP tool invocations with status badges.
-* **MCP & System Inspector (`/app/mcp`):** Developer playground to test any of the 8 MCP tools directly with custom JSON arguments.
+* **MCP & System Inspector (`/app/mcp`):** Developer playground to test any registered MCP tool directly with custom JSON arguments.
 * **Settings & Preferences (`/app/settings`):** Manage profile display name, test vocal output, and inspect protocol connection health.
 
 ---
 
 ## 🛠️ MCP Tool Registry
 
-The MCP server registers 9 deterministic tools conforming to MCP specification `2025-11-25`:
+The MCP server registers 21 deterministic tools conforming to MCP specification `2025-11-25`:
 
 | Tool Name | Parameters | Description |
 | :--- | :--- | :--- |
@@ -121,6 +146,21 @@ The MCP server registers 9 deterministic tools conforming to MCP specification `
 | `save_note` | `title`*, `content`*, `tags` | Stores markdown note with category tags |
 | `search_notes` | `query`, `tag`, `limit` | Full-text search across note titles and content |
 | `get_assistant_status`| *(None)* | Returns server health, latency, and counts |
+| `play_music` | `query`, `action` | Controls audio playback, streaming tracks, and genre playlists |
+| `get_playback_status` | *(None)* | Retrieves current playing song, volume, and playback state |
+| `search_recipes` | `query`, `diet` | Searches kitchen recipes with allergen safety assessments and photos |
+| `get_recipe_details` | `recipe_id`* | Retrieves step-by-step instructions and dietary warnings |
+| `discover_devices` | *(None)* | Discovers nearby compatible smart devices for pairing |
+| `connect_device` | `device_name`* | Pairs and connects a smart device to Alexa+ hub |
+| `control_device` | `device_name`*, `power`, `brightness`, `temp` | Adjusts smart home device settings |
+| `check_opentable_status` | *(None)* | Verifies if user has a linked OpenTable account |
+| `link_opentable_account` | `email`*, `full_name`, `phone` | Links OpenTable dining account to enable table reservations |
+| `search_restaurants` | `query`, `cuisine` | Searches partner restaurants with photography and time slots |
+| `book_restaurant` | `restaurant_name`*, `date`*, `time`*, `party_size`* | Reserves table via OpenTable and syncs to calendar |
+| `search_hotels` | `destination` | Searches luxury accommodations with room types and rates |
+| `book_hotel` | `hotel_name`*, `destination`*, `check_in`*, `check_out`* | Books hotel stay and automatically creates calendar event |
+| `get_calendar_events` | *(None)* | Retrieves synchronized hotel, dining, and reminder schedule |
+| `add_calendar_event` | `title`*, `start_time`*, `end_time`*, `event_type` | Adds custom schedule or travel event |
 
 *\* Denotes required parameter.*
 
@@ -157,7 +197,7 @@ Apply the PostgreSQL database migrations to your Supabase instance:
 ```bash
 npm run db:migrate
 ```
-*Applies `20261021000001_create_schema.sql`, `20261021000002_seed_dev_data.sql`, and `20261021000003_add_conversations_and_messages.sql`.*
+*Applies `20261021000001_create_schema.sql`, `20261021000002_seed_dev_data.sql`, `20261021000003_add_conversations_and_messages.sql`, and `20261021000004_add_alexa_plus_features.sql`.*
 
 ### 4. Running the Application
 
@@ -183,19 +223,21 @@ The application includes an end-to-end automated test suite:
 npm test
 ```
 
-### Verified Test Results (50 Passed across 8 Suites):
+### Verified Test Results (68 Passed across 10 Suites):
 ```
  ✓ tests/health.test.ts (2 tests)
  ✓ tests/auth.test.ts (3 tests)
+ ✓ tests/auth_endpoints.test.ts (2 tests)
  ✓ tests/oauth_metadata.test.ts (3 tests)
  ✓ tests/conversations.test.ts (6 tests)
  ✓ tests/db_services.test.ts (4 tests)
+ ✓ tests/features.test.ts (16 tests)
  ✓ tests/mcp.test.ts (5 tests)
  ✓ tests/gemini.test.ts (3 tests)
  ✓ tests/all_endpoints.test.ts (24 tests)
 
- Test Files  8 passed (8)
-      Tests  50 passed (50)
+ Test Files  10 passed (10)
+      Tests  68 passed (68)
 ```
 
 ---

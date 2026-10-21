@@ -77,6 +77,178 @@ export interface AuditEventItem {
   created_at: string;
 }
 
+// Extended Alexa+ Feature Interfaces
+export interface SmartDevice {
+  id: string;
+  user_id: string;
+  name: string;
+  type: string;
+  room: string;
+  is_connected: boolean;
+  status: string;
+  settings: {
+    power?: boolean;
+    volume?: number;
+    brightness?: number;
+    temperature?: number;
+    mode?: string;
+    [key: string]: any;
+  };
+}
+
+export interface SuggestedDevice {
+  name: string;
+  type: string;
+  room: string;
+  description: string;
+  icon: string;
+  signalStrength: string;
+  protocol: string;
+}
+
+export interface MusicTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;
+  album_art: string;
+  genre: string;
+  mood?: string;
+  preview_url?: string;
+}
+
+export interface MusicPlaybackState {
+  current_track: MusicTrack;
+  is_playing: boolean;
+  progress_seconds: number;
+  volume: number;
+  queue: MusicTrack[];
+}
+
+export interface RecipeAllergenInfo {
+  safetyRating: 'Safe for All' | 'Contains Common Allergens' | 'Special Dietary Caution';
+  allergensPresent: string[];
+  isSafeFor: string[];
+  cautionGroups: string[];
+  safetyNotice: string;
+  populationWarnings?: {
+    pregnancyCaution?: string;
+    toddlerCaution?: string;
+    diabeticCaution?: string;
+  };
+}
+
+export interface KitchenRecipe {
+  id: string;
+  title: string;
+  description: string;
+  cuisine: string;
+  prepTime: string;
+  cookTime: string;
+  totalTime: string;
+  servings: number;
+  caloriesPerServing: number;
+  difficulty: 'Easy' | 'Intermediate' | 'Advanced';
+  imageUrl: string;
+  ingredients: string[];
+  instructions: string[];
+  dietaryTags: string[];
+  allergenSafety: RecipeAllergenInfo;
+}
+
+export interface OpenTableAccount {
+  id: string;
+  user_id: string;
+  email: string;
+  phone?: string;
+  full_name: string;
+  is_linked: boolean;
+  vip_status: boolean;
+  dining_points: number;
+}
+
+export interface RestaurantItem {
+  id: string;
+  name: string;
+  cuisine: string;
+  priceRange: string;
+  rating: number;
+  reviewsCount: number;
+  location: string;
+  neighborhood: string;
+  imageUrl: string;
+  availableTimes: string[];
+  description: string;
+}
+
+export interface RestaurantReservation {
+  id: string;
+  restaurant_name: string;
+  cuisine: string;
+  location: string;
+  party_size: number;
+  reservation_date: string;
+  reservation_time: string;
+  image_url: string;
+  confirmation_code: string;
+  status: string;
+  special_requests?: string;
+}
+
+export interface HotelListing {
+  id: string;
+  name: string;
+  destination: string;
+  city: string;
+  country: string;
+  starRating: number;
+  userRating: number;
+  reviewsCount: number;
+  pricePerNight: number;
+  imageUrl: string;
+  gallery: string[];
+  roomTypes: Array<{
+    type: string;
+    price: number;
+    bed: string;
+    view: string;
+  }>;
+  amenities: string[];
+  description: string;
+  locationDetails: string;
+}
+
+export interface HotelBooking {
+  id: string;
+  hotel_name: string;
+  destination: string;
+  check_in_date: string;
+  check_out_date: string;
+  guests: number;
+  room_type: string;
+  total_price: number;
+  image_url: string;
+  confirmation_code: string;
+  rating: number;
+  status: string;
+  amenities: string[];
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  event_type: 'hotel' | 'restaurant' | 'reminder' | 'personal';
+  start_time: string;
+  end_time: string;
+  location?: string;
+  description?: string;
+  image_url?: string;
+  reference_id?: string;
+  status: string;
+  metadata?: Record<string, any>;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}, token?: string | null): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
@@ -93,7 +265,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}, token?: s
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.message || data.error || `HTTP error ${res.status}`);
+    const err: any = new Error(data.message || data.error || `HTTP error ${res.status}`);
+    err.status = res.status;
+    err.requiresOpenTable = data.requiresOpenTable;
+    throw err;
   }
 
   return data as T;
@@ -117,6 +292,8 @@ export const api = {
     ),
 
   // Conversations
+  listConversations: (token: string | null) =>
+    request<{ conversations: ConversationItem[] }>(`${API_BASE}/conversations`, {}, token),
   getConversations: (token: string | null) =>
     request<{ conversations: ConversationItem[] }>(`${API_BASE}/conversations`, {}, token),
 
@@ -137,6 +314,15 @@ export const api = {
       token
     ),
 
+  updateConversationTitle: (id: string, title: string, token: string | null) =>
+    request<{ conversation: ConversationItem }>(
+      `${API_BASE}/conversations/${id}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ title }),
+      },
+      token
+    ),
   updateConversation: (id: string, title: string, token: string | null) =>
     request<{ conversation: ConversationItem }>(
       `${API_BASE}/conversations/${id}`,
@@ -148,7 +334,7 @@ export const api = {
     ),
 
   deleteConversation: (id: string, token: string | null) =>
-    request<{ deleted: boolean; conversationId: string }>(
+    request<{ deleted: boolean }>(
       `${API_BASE}/conversations/${id}`,
       {
         method: 'DELETE',
@@ -156,24 +342,23 @@ export const api = {
       token
     ),
 
-  getConversationMessages: (id: string, token: string | null) =>
-    request<{ messages: MessageItemData[] }>(`${API_BASE}/conversations/${id}/messages`, {}, token),
-
   // Tasks
-  getTaskById: (id: string, token: string | null) =>
-    request<{ task: TaskItem }>(`${API_BASE}/tasks/${id}`, {}, token),
-
-  getTasks: (token: string | null, filter?: { status?: string; priority?: string }) => {
-    const params = new URLSearchParams();
-    if (filter?.status) params.set('status', filter.status);
-    if (filter?.priority) params.set('priority', filter.priority);
-    return request<{ tasks: TaskItem[] }>(`${API_BASE}/tasks?${params.toString()}`, {}, token);
+  listTasks: (token: string | null, status = 'all') =>
+    request<{ tasks: TaskItem[] }>(`${API_BASE}/tasks?status=${status}`, {}, token),
+  getTasks: (token: string | null, filter: string | { status?: string; priority?: string } = 'all') => {
+    let url = `${API_BASE}/tasks`;
+    if (typeof filter === 'string') {
+      url += `?status=${filter}`;
+    } else {
+      const p = new URLSearchParams();
+      if (filter.status) p.set('status', filter.status);
+      if (filter.priority) p.set('priority', filter.priority);
+      url += `?${p.toString()}`;
+    }
+    return request<{ tasks: TaskItem[] }>(url, {}, token);
   },
 
-  createTask: (
-    task: { title: string; description?: string; priority?: string; due_date?: string },
-    token: string | null
-  ) =>
+  createTask: (task: { title: string; description?: string; priority?: string; due_date?: string }, token: string | null) =>
     request<{ task: TaskItem }>(
       `${API_BASE}/tasks`,
       {
@@ -203,14 +388,10 @@ export const api = {
     ),
 
   // Reminders
-  getReminderById: (id: string, token: string | null) =>
-    request<{ reminder: ReminderItem }>(`${API_BASE}/reminders/${id}`, {}, token),
-
-  getReminders: (token: string | null, status?: string) => {
-    const params = new URLSearchParams();
-    if (status) params.set('status', status);
-    return request<{ reminders: ReminderItem[] }>(`${API_BASE}/reminders?${params.toString()}`, {}, token);
-  },
+  listReminders: (token: string | null, status = 'scheduled') =>
+    request<{ reminders: ReminderItem[] }>(`${API_BASE}/reminders?status=${status}`, {}, token),
+  getReminders: (token: string | null, status = 'scheduled') =>
+    request<{ reminders: ReminderItem[] }>(`${API_BASE}/reminders?status=${status}`, {}, token),
 
   createReminder: (reminder: { message: string; scheduled_time: string }, token: string | null) =>
     request<{ reminder: ReminderItem }>(
@@ -242,11 +423,10 @@ export const api = {
     ),
 
   // Notes
-  getNoteById: (id: string, token: string | null) =>
-    request<{ note: NoteItem }>(`${API_BASE}/notes/${id}`, {}, token),
-
-  getNotes: (token: string | null, limit = 30) =>
-    request<{ notes: NoteItem[] }>(`${API_BASE}/notes?limit=${limit}`, {}, token),
+  listNotes: (token: string | null) =>
+    request<{ notes: NoteItem[] }>(`${API_BASE}/notes`, {}, token),
+  getNotes: (token: string | null) =>
+    request<{ notes: NoteItem[] }>(`${API_BASE}/notes`, {}, token),
 
   searchNotes: (token: string | null, query = '', tag = '') => {
     const params = new URLSearchParams();
@@ -314,6 +494,147 @@ export const api = {
       {
         method: 'POST',
         body: JSON.stringify({ tool, arguments: args }),
+      },
+      token
+    ),
+
+  // --- 📱 Connected Devices ---
+  getDevices: (token: string | null) =>
+    request<{ devices: SmartDevice[] }>(`${API_BASE}/devices`, {}, token),
+
+  getSuggestedDevices: (token: string | null) =>
+    request<{ connectedCount: number; totalRegistered: number; suggestedDevices: SuggestedDevice[] }>(
+      `${API_BASE}/devices/suggestions`,
+      {},
+      token
+    ),
+
+  connectDevice: (deviceName: string, token: string | null) =>
+    request<{ success: boolean; device: SmartDevice }>(
+      `${API_BASE}/devices/connect`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ device_name: deviceName }),
+      },
+      token
+    ),
+
+  controlDevice: (deviceName: string, settings: Record<string, any>, token: string | null) =>
+    request<{ success: boolean; device: SmartDevice }>(
+      `${API_BASE}/devices/control`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ device_name: deviceName, ...settings }),
+      },
+      token
+    ),
+
+  // --- 🎵 Music Playback ---
+  getMusicStatus: (token: string | null) =>
+    request<MusicPlaybackState>(`${API_BASE}/music/status`, {}, token),
+
+  playMusic: (options: { query?: string; artist?: string; genre?: string; mood?: string; trackId?: string }, token: string | null) =>
+    request<MusicPlaybackState>(
+      `${API_BASE}/music/play`,
+      {
+        method: 'POST',
+        body: JSON.stringify(options),
+      },
+      token
+    ),
+
+  controlMusic: (action: 'pause' | 'resume' | 'next' | 'volume', volume?: number, token?: string | null) =>
+    request<MusicPlaybackState>(
+      `${API_BASE}/music/control`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ action, volume }),
+      },
+      token
+    ),
+
+  // --- 🍳 Kitchen Recipes ---
+  getRecipes: (query = '', cuisine = '', dietary = '', token: string | null = null) => {
+    const params = new URLSearchParams();
+    if (query) params.set('query', query);
+    if (cuisine) params.set('cuisine', cuisine);
+    if (dietary) params.set('dietary', dietary);
+    return request<{ recipes: KitchenRecipe[] }>(`${API_BASE}/recipes?${params.toString()}`, {}, token);
+  },
+
+  getRecipeDetails: (id: string, token: string | null = null) =>
+    request<{ recipe: KitchenRecipe }>(`${API_BASE}/recipes/${id}`, {}, token),
+
+  // --- 🍽️ OpenTable Dining ---
+  getOpenTableAccount: (token: string | null) =>
+    request<{ isLinked: boolean; account: OpenTableAccount | null }>(`${API_BASE}/opentable/account`, {}, token),
+
+  linkOpenTableAccount: (data: { email: string; phone?: string; full_name?: string }, token: string | null) =>
+    request<{ success: boolean; account: OpenTableAccount }>(
+      `${API_BASE}/opentable/link`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+      token
+    ),
+
+  getRestaurants: (cuisine = '', location = '', token: string | null = null) => {
+    const params = new URLSearchParams();
+    if (cuisine) params.set('cuisine', cuisine);
+    if (location) params.set('location', location);
+    return request<{ restaurants: RestaurantItem[] }>(`${API_BASE}/opentable/restaurants?${params.toString()}`, {}, token);
+  },
+
+  bookRestaurant: (data: { restaurant_name: string; party_size?: number; date: string; time: string; special_requests?: string }, token: string | null) =>
+    request<{ reservation: RestaurantReservation; restaurant: RestaurantItem; vocalConfirmation: string }>(
+      `${API_BASE}/opentable/book`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+      token
+    ),
+
+  getUserReservations: (token: string | null) =>
+    request<{ reservations: RestaurantReservation[] }>(`${API_BASE}/opentable/reservations`, {}, token),
+
+  // --- 🏨 Hotel Bookings ---
+  getHotels: (destination = '', minRating?: number, maxPrice?: number, token: string | null = null) => {
+    const params = new URLSearchParams();
+    if (destination) params.set('destination', destination);
+    if (minRating) params.set('min_rating', String(minRating));
+    if (maxPrice) params.set('max_price', String(maxPrice));
+    return request<{ hotels: HotelListing[] }>(`${API_BASE}/hotels?${params.toString()}`, {}, token);
+  },
+
+  bookHotel: (data: { hotel_name: string; destination?: string; check_in: string; check_out: string; guests?: number; room_type?: string }, token: string | null) =>
+    request<{ booking: HotelBooking; hotel: HotelListing; vocalConfirmation: string }>(
+      `${API_BASE}/hotels/book`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+      token
+    ),
+
+  getUserHotelBookings: (token: string | null) =>
+    request<{ bookings: HotelBooking[] }>(`${API_BASE}/hotels/bookings`, {}, token),
+
+  // --- 📅 Calendar Events ---
+  getCalendarEvents: (token: string | null, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    return request<{ events: CalendarEvent[] }>(`${API_BASE}/calendar?${params.toString()}`, {}, token);
+  },
+
+  addCalendarEvent: (event: Partial<CalendarEvent>, token: string | null) =>
+    request<{ success: boolean; event: CalendarEvent }>(
+      `${API_BASE}/calendar`,
+      {
+        method: 'POST',
+        body: JSON.stringify(event),
       },
       token
     ),

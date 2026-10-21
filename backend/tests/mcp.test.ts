@@ -12,13 +12,13 @@ describe('Model Context Protocol (MCP) Server Tests', () => {
     expect(res.body).toHaveProperty('name', 'Alexa+ Smart Assistant MCP Server');
     expect(res.body).toHaveProperty('protocolVersion', '2025-11-25');
     expect(res.body).toHaveProperty('transport', 'Streamable HTTP (JSON-RPC 2.0)');
-    expect(res.body).toHaveProperty('toolsAvailable', 9);
+    expect(res.body).toHaveProperty('toolsAvailable', MCP_TOOLS_CATALOG.length);
   });
 
-  it('GET /mcp/tools lists all 9 required tools with valid descriptions', async () => {
+  it('GET /mcp/tools lists all catalog tools with valid descriptions', async () => {
     const res = await request(app).get('/mcp/tools');
     expect(res.status).toBe(200);
-    expect(res.body.tools).toHaveLength(9);
+    expect(res.body.tools).toHaveLength(MCP_TOOLS_CATALOG.length);
 
     const toolNames = res.body.tools.map((t: any) => t.name);
     expect(toolNames).toContain('create_task');
@@ -30,6 +30,12 @@ describe('Model Context Protocol (MCP) Server Tests', () => {
     expect(toolNames).toContain('save_note');
     expect(toolNames).toContain('search_notes');
     expect(toolNames).toContain('get_assistant_status');
+    expect(toolNames).toContain('play_music');
+    expect(toolNames).toContain('search_recipes');
+    expect(toolNames).toContain('discover_devices');
+    expect(toolNames).toContain('book_restaurant');
+    expect(toolNames).toContain('book_hotel');
+    expect(toolNames).toContain('get_calendar_events');
   });
 
   it('MCP Tool Execution: create_task, complete_task, list_tasks, and get_assistant_status', async () => {
