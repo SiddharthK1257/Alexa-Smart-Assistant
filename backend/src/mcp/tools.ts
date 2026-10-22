@@ -68,7 +68,13 @@ export const playMusicSchema = z.object({
   artist: z.string().optional(),
   genre: z.string().optional(),
   mood: z.string().optional(),
-  action: z.enum(['play', 'pause', 'resume', 'next', 'previous']).default('play').optional(),
+  videoId: z.string().optional(),
+  trackId: z.string().optional(),
+  action: z.enum(['play', 'pause', 'resume', 'next', 'previous', 'stop']).default('play').optional(),
+});
+
+export const searchMusicSchema = z.object({
+  query: z.string().min(1, 'Search query is required'),
 });
 
 export const getPlaybackStatusSchema = z.object({});
@@ -202,8 +208,13 @@ export const MCP_TOOLS_CATALOG = [
   },
   {
     name: 'play_music',
-    description: 'Control music playback, search songs, play genres (lo-fi, jazz, classical, synthwave) or moods.',
+    description: 'Play music, search songs, or play artists and genres via official YouTube music search and embedded player.',
     schema: playMusicSchema,
+  },
+  {
+    name: 'search_music',
+    description: 'Search for songs, music videos, or artists on YouTube to view matching search results.',
+    schema: searchMusicSchema,
   },
   {
     name: 'get_playback_status',
@@ -370,13 +381,21 @@ export async function executeMcpTool(toolName: string, args: any, userId: string
       // 🎵 Music Tools
       case 'play_music': {
         const validated = playMusicSchema.parse(args);
-        if (validated.action === 'pause') {
+        if (validated.action === 'pause' || validated.action === 'stop') {
           result = await musicService.pauseMusic(userId);
+        } else if (validated.action === 'resume') {
+          result = await musicService.resumeMusic(userId);
         } else if (validated.action === 'next') {
           result = await musicService.nextTrack(userId);
         } else {
           result = await musicService.playMusic(userId, validated);
         }
+        break;
+      }
+
+      case 'search_music': {
+        const validated = searchMusicSchema.parse(args);
+        result = await musicService.searchYouTubeTracks(validated.query);
         break;
       }
 

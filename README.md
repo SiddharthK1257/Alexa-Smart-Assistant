@@ -96,9 +96,11 @@ flowchart TD
 * **Follow-up Chips:** Contextual prompt recommendations based on recent actions.
 * **One-Click Copy & Speak:** Instant clipboard copy and vocal replay for assistant responses.
 
-### 3. 🎵 Music Playback & Audio Hub (`/app/music`)
-* **Music Streaming & Audio Engine:** Interactive music player with audio synthesis preview, volume control, track progression, and genre-based playback (Lo-Fi Study, Sunset Jazz, Cyberpunk Synthwave, Acoustic Coffeehouse, Classical Focus).
-* **Now Playing HUD:** Persistent mini-player bar synced across navigation views with spinning vinyl disc animation and quick pause/play controls.
+### 3. 🎵 YouTube Music & Audio Hub (`/app/music`)
+* **Official YouTube IFrame Player:** Official embedded player with full video/audio streaming, standard ad-supported free playback, responsive 16:9 layout, scrub bar, real duration tracking, and volume controls.
+* **YouTube Data API v3 Search:** Search YouTube's global music catalog for any song, artist, album, or style. Includes graceful missing-key handling, quota protection, and content owner embed restriction alerts with direct links to watch on YouTube.
+* **Voice-Activated Playback:** Ask by voice to "Play [song] by [artist]", "Play songs by [artist]", "Find [song]", "Play relaxing music", "Pause", "Resume", "Next song", or "Show me the search results". Playback is confirmed directly by the player before announcement.
+* **Featured Channels & Queue:** Curated embeddable music streams (Lo-Fi Girl, Synthwave, Classical Piano, Smooth Jazz, Acoustic Guitar) and dynamic search result queue with official YouTube thumbnails and metadata.
 
 ### 4. 🍳 Kitchen Recipes & Allergen Safety Hub (`/app/recipes`)
 * **Culinary Catalog with High-Resolution Photography:** Search recipes by title, ingredients, or dietary preferences (Nut-Free, Vegan, Dairy-Free, Gluten-Free, Keto-Friendly).
@@ -146,8 +148,9 @@ The MCP server registers 21 deterministic tools conforming to MCP specification 
 | `save_note` | `title`*, `content`*, `tags` | Stores markdown note with category tags |
 | `search_notes` | `query`, `tag`, `limit` | Full-text search across note titles and content |
 | `get_assistant_status`| *(None)* | Returns server health, latency, and counts |
-| `play_music` | `query`, `action` | Controls audio playback, streaming tracks, and genre playlists |
-| `get_playback_status` | *(None)* | Retrieves current playing song, volume, and playback state |
+| `play_music` | `query`, `artist`, `genre`, `videoId`, `action` | Searches & plays YouTube music videos, or controls playback (play, pause, resume, next, stop) |
+| `search_music` | `query`* | Searches YouTube Data API v3 for matching music videos without immediately playing |
+| `get_playback_status` | *(None)* | Retrieves current YouTube track, player status, volume, and upcoming playlist queue |
 | `search_recipes` | `query`, `diet` | Searches kitchen recipes with allergen safety assessments and photos |
 | `get_recipe_details` | `recipe_id`* | Retrieves step-by-step instructions and dietary warnings |
 | `discover_devices` | *(None)* | Discovers nearby compatible smart devices for pairing |
@@ -178,7 +181,7 @@ Copy `.env.example` to `.env` in the project root:
 ```bash
 cp .env.example .env
 ```
-Ensure `.env` contains your Supabase credentials and Gemini API key:
+Ensure `.env` contains your Supabase credentials, Gemini API key, and optional YouTube Data API key:
 ```ini
 PORT=4000
 NODE_ENV=development
@@ -186,6 +189,9 @@ FRONTEND_URL=http://localhost:5173
 
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-3.8-flash
+
+# YouTube Data API v3 (for dynamic YouTube music search)
+YOUTUBE_API_KEY=your_youtube_data_api_v3_key
 
 SUPABASE_URL=https://<your-project-id>.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
@@ -223,21 +229,21 @@ The application includes an end-to-end automated test suite:
 npm test
 ```
 
-### Verified Test Results (68 Passed across 10 Suites):
+### Verified Test Results (70 Passed across 10 Suites):
 ```
  ✓ tests/health.test.ts (2 tests)
  ✓ tests/auth.test.ts (3 tests)
- ✓ tests/auth_endpoints.test.ts (2 tests)
+ ✓ tests/auth_endpoints.test.ts (5 tests)
  ✓ tests/oauth_metadata.test.ts (3 tests)
  ✓ tests/conversations.test.ts (6 tests)
  ✓ tests/db_services.test.ts (4 tests)
- ✓ tests/features.test.ts (16 tests)
+ ✓ tests/features.test.ts (18 tests)
  ✓ tests/mcp.test.ts (5 tests)
  ✓ tests/gemini.test.ts (3 tests)
  ✓ tests/all_endpoints.test.ts (24 tests)
 
  Test Files  10 passed (10)
-      Tests  68 passed (68)
+      Tests  70 passed (70)
 ```
 
 ---

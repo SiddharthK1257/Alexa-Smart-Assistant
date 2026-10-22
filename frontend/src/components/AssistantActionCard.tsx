@@ -16,8 +16,9 @@ import {
   ExternalLink,
   MapPin,
   Flame,
+  Youtube,
 } from 'lucide-react';
-import { ToolExecution } from '../services/api';
+import { ToolExecution, MusicTrack } from '../services/api';
 
 interface AssistantActionCardProps {
   tool: ToolExecution;
@@ -27,58 +28,54 @@ interface AssistantActionCardProps {
 export const AssistantActionCard: React.FC<AssistantActionCardProps> = ({ tool, onSendMessage }) => {
   if (tool.status !== 'success' || !tool.result) return null;
 
-  // 1. 🎵 MUSIC CARD (with live Spotify support & complete original playback)
+  // 1. 🎵 YOUTUBE MUSIC PLAYBACK CARD
   if (tool.name === 'play_music') {
-    const track = tool.result.current_track;
+    const track: MusicTrack = tool.result.current_track;
     if (!track) return null;
-    const isSpotify = track.source === 'Spotify' || !!track.spotify_url;
-    const spotifyEmbedSrc = track.spotify_embed_url ||
-      (track.spotify_id ? `https://open.spotify.com/embed/track/${track.spotify_id}?utm_source=generator&theme=0` : null);
-    const fullAudioSrc = track.full_audio_url ||
-      `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent((track.artist || '') + ' ' + (track.title || '') + ' Official Audio')}&autoplay=1`;
+    const videoId = track.videoId || track.id;
+    const embedUrl = track.embed_url || `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
+    const watchUrl = track.youtube_url || `https://www.youtube.com/watch?v=${videoId}`;
 
     return (
       <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-[#0F172A] via-[#111c38] to-[#1E1B4B] border border-cyan-500/40 shadow-xl space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-cyan-500/30 relative">
-              <img src={track.album_art} alt={track.title} className="w-full h-full object-cover" />
+            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-cyan-500/30 relative bg-black">
+              <img
+                src={track.thumbnail || track.album_art || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+                alt={track.title}
+                className="w-full h-full object-cover"
+              />
               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                 <Disc3 className="w-5 h-5 text-cyan-300 animate-spin" style={{ animationDuration: '4s' }} />
               </div>
             </div>
             <div className="overflow-hidden">
               <div className="flex items-center gap-1.5">
-                {isSpotify ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    SPOTIFY ORIGINAL
-                  </span>
-                ) : (
-                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
-                    NOW PLAYING
-                  </span>
-                )}
-                <span className="text-[10px] text-gray-400 truncate">{track.genre}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-extrabold border border-red-500/30 flex items-center gap-1">
+                  <Youtube className="w-2.5 h-2.5 fill-red-500" />
+                  YOUTUBE
+                </span>
+                <span className="text-[10px] text-cyan-300 font-semibold truncate">
+                  {track.channelTitle || track.artist}
+                </span>
               </div>
               <h4 className="font-bold text-xs text-white truncate">{track.title}</h4>
-              <p className="text-[11px] text-gray-300 truncate">{track.artist} {track.album ? `• ${track.album}` : ''}</p>
+              <p className="text-[11px] text-gray-300 truncate">Official YouTube Music Video</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {track.spotify_url && (
-              <a
-                href={track.spotify_uri || track.spotify_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 py-1.5 rounded-xl bg-[#1DB954]/20 hover:bg-[#1DB954]/30 text-[#1DB954] border border-[#1DB954]/40 text-xs font-semibold transition-all flex items-center gap-1.5"
-                title="Open in Spotify App"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Spotify</span>
-              </a>
-            )}
+            <a
+              href={watchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 text-xs font-semibold transition-all flex items-center gap-1.5"
+              title="Open on YouTube"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">YouTube</span>
+            </a>
             <button
               type="button"
               onClick={() => {
@@ -99,34 +96,83 @@ export const AssistantActionCard: React.FC<AssistantActionCardProps> = ({ tool, 
           </div>
         </div>
 
-        {/* Embedded Official Spotify Player or Complete Audio Stream */}
-        {spotifyEmbedSrc ? (
-          <div className="overflow-hidden rounded-xl border border-emerald-500/30 shadow-lg">
-            <iframe
-              src={spotifyEmbedSrc}
-              width="100%"
-              height="80"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              title={`Spotify: ${track.title}`}
-              className="w-full"
-            />
+        {/* Embedded Official YouTube Player */}
+        <div className="overflow-hidden rounded-xl border border-cyan-500/30 shadow-lg aspect-video w-full bg-black">
+          <iframe
+            src={embedUrl}
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+            title={`YouTube: ${track.title}`}
+            className="w-full h-full"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // 1b. 🔍 YOUTUBE MUSIC SEARCH RESULTS CARD
+  if (tool.name === 'search_music') {
+    const tracks: MusicTrack[] = tool.result.tracks || [];
+    if (tracks.length === 0) return null;
+
+    return (
+      <div className="mt-3 p-4 rounded-2xl bg-[#0F172A] border border-cyan-500/40 shadow-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold">
+            <Youtube className="w-4 h-4 text-red-500 fill-red-500" />
+            <span>YouTube Music Search Results</span>
           </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-cyan-500/30 shadow-lg">
-            <iframe
-              src={fullAudioSrc}
-              width="100%"
-              height="80"
-              frameBorder="0"
-              allow="autoplay; encrypted-media; picture-in-picture"
-              loading="lazy"
-              title={`Full Song: ${track.title}`}
-              className="w-full"
-            />
-          </div>
-        )}
+          <span className="text-[10px] text-gray-400">{tracks.length} videos found</span>
+        </div>
+
+        <div className="space-y-2">
+          {tracks.slice(0, 4).map((t, idx) => (
+            <div
+              key={t.videoId || idx}
+              className="flex items-center justify-between p-2 rounded-xl bg-[#0B0F19]/80 border border-gray-800 hover:border-gray-700 transition-all gap-3"
+            >
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <img
+                  src={t.thumbnail || t.album_art || `https://i.ytimg.com/vi/${t.videoId}/hqdefault.jpg`}
+                  alt={t.title}
+                  className="w-10 h-8 rounded-lg object-cover shrink-0 bg-black"
+                />
+                <div className="overflow-hidden">
+                  <h5 className="text-xs font-bold text-white truncate">{t.title}</h5>
+                  <p className="text-[10px] text-gray-400 truncate">{t.channelTitle || t.artist}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSendMessage) {
+                      onSendMessage(`Play ${t.title}`);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-[11px] flex items-center gap-1 transition-all"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>Play</span>
+                </button>
+                <a
+                  href={t.youtube_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                  title="Open on YouTube"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

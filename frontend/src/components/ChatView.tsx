@@ -54,7 +54,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([
-    'Play Blinding Lights on Spotify',
+    'Play Blinding Lights on YouTube',
     'Show me Butter Chicken recipe with images',
     'Nearest hotels in my place',
     'Play Shape of You by Ed Sheeran',

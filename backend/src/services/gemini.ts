@@ -114,14 +114,26 @@ const geminiTools = [
       },
       {
         name: 'play_music',
-        description: 'Play music, search songs, play genres (lo-fi, synthwave, acoustic, classical, jazz) or control playback.',
+        description: 'Play music, search songs, play artists or genres (relaxing, lo-fi, synthwave, acoustic, classical, jazz) via official YouTube player or control playback (play, pause, resume, next, stop).',
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
-            query: { type: SchemaType.STRING, description: 'Song title, mood, or artist' },
-            genre: { type: SchemaType.STRING, description: 'Music genre' },
-            action: { type: SchemaType.STRING, enum: ['play', 'pause', 'resume', 'next', 'previous'] },
+            query: { type: SchemaType.STRING, description: 'Song title, mood, or search keywords' },
+            artist: { type: SchemaType.STRING, description: 'Artist or band name' },
+            genre: { type: SchemaType.STRING, description: 'Music genre or style' },
+            action: { type: SchemaType.STRING, enum: ['play', 'pause', 'resume', 'next', 'stop', 'search'] },
           },
+        },
+      },
+      {
+        name: 'search_music',
+        description: 'Search for songs, music videos, or artists on YouTube to view search results without immediate playback.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            query: { type: SchemaType.STRING, description: 'Song title, artist, or music query' },
+          },
+          required: ['query'],
         },
       },
       {
@@ -274,11 +286,15 @@ export interface AssistantResponse {
 }
 
 const SYSTEM_INSTRUCTION = `You are Alexa+, the premier next-generation intelligent conversational voice and multimodal assistant.
-You possess broad human intelligence, warmth, and natural speech synthesis, capable of answering day-to-day life questions, playing any song present in Spotify by voice, providing kitchen recipes for any dish in the world with images and allergy & safety analysis, finding hotels across the world and nearest hotels in the user's location with images, connecting to smart home devices, reserving tables on OpenTable, and booking hotels with automatic calendar synchronization.
+You possess broad human intelligence, warmth, and natural speech synthesis, capable of answering day-to-day life questions, searching and playing songs and artists on YouTube by voice, providing kitchen recipes for any dish in the world with images and allergy & safety analysis, finding hotels across the world and nearest hotels in the user's location with images, connecting to smart home devices, reserving tables on OpenTable, and booking hotels with automatic calendar synchronization.
 
 Key Capabilities:
 1. Everyday Life & Knowledge: Answer any everyday life question—weather, science, travel tips, conversions, general advice, time, productivity.
-2. Spotify Music by Voice: Whenever the user asks by voice to play any song present on Spotify (pop, rock, hip-hop, indie, classical, jazz, Bollywood, global hits), immediately call 'play_music' with the track name, artist, or genre to stream it directly with album art and Spotify deep link.
+2. YouTube Music by Voice: Whenever the user asks by voice to play any song or artist, search videos, or play styles (e.g. "Play Blinding Lights by The Weeknd", "Play songs by Queen", "Find Bohemian Rhapsody", "Play relaxing music", "Pause", "Resume", "Next song", "Stop music", "Show me the search results"), interpret their intent and immediately call 'play_music' or 'search_music'.
+   - Playback is powered by the official YouTube embedded player (standard ad-supported, free playback where YouTube officially permits).
+   - Never claim Spotify is used; this assistant is fully integrated with YouTube.
+   - If a request is ambiguous (e.g. user simply says "play" or "play music" without song or artist), ask a concise clarification.
+   - Be honest about availability: playback depends on content owner embed permissions, regional licensing, and YouTube terms.
 3. Kitchen Recipes & Food Safety: Provide delicious recipes with food photography for ANY dish in the world. Crucially, always clearly assess whether the recipe is safe for others (allergens like nuts, dairy, gluten, eggs; pregnancy/toddler cautions; diabetic suitability) using 'search_recipes'.
 4. Hotels Across the World & Nearest Hotels: Search luxury hotels worldwide and find the nearest hotels in the user's location with images and distance using 'search_hotels'. Confirm reservation details and sync them directly to Calendar.
 5. Device Connectivity & Smart Home: Discover nearby compatible devices (Echo Studio, Echo Show, Philips Hue, Thermostats), suggest which devices to connect, and control settings using 'discover_devices', 'connect_device', and 'control_device'.
@@ -523,57 +539,156 @@ async function handleFallbackIntent(
     };
   }
 
-  // 2. Music Playing & Control
+  // 2. Music Playing, Search & Playback Control
   if (
     lower.includes('music') ||
     lower.includes('song') ||
     lower.includes('track') ||
     lower.includes('playlist') ||
     lower.startsWith('play') ||
-    lower.includes('play music') ||
+    lower.startsWith('find') ||
+    lower.startsWith('search') ||
+    lower.includes('search results') ||
     lower.includes('pause') ||
+    lower.includes('resume') ||
     lower.includes('stop') ||
     lower === 'stop' ||
     lower === 'pause' ||
+    lower === 'resume' ||
     lower === 'alexa stop' ||
-    lower === 'alexa pause'
+    lower === 'alexa pause' ||
+    lower === 'alexa resume'
   ) {
-    if (lower.includes('pause') || lower.includes('stop') || lower === 'stop' || lower === 'pause' || lower === 'alexa stop' || lower === 'alexa pause') {
-      const res = await executeMcpTool('play_music', { action: 'pause' }, userId);
-      toolExecutions.push({ name: 'play_music', args: { action: 'pause' }, result: res, status: 'success', timestamp: executionTimestamp });
-      return {
-        response: 'Music paused. Say "Alexa, resume" whenever you are ready to continue listening.',
-        toolExecutions,
-        followUpSuggestions: ['Resume music', 'Next song', 'Play jazz'],
-      };
-    }
-
-    if (lower.includes('next') || lower.includes('skip')) {
-      const res = await executeMcpTool('play_music', { action: 'next' }, userId);
-      toolExecutions.push({ name: 'play_music', args: { action: 'next' }, result: res, status: 'success', timestamp: executionTimestamp });
-      return {
-        response: `Now playing "${res.current_track.title}" by ${res.current_track.artist}.`,
-        toolExecutions,
-        followUpSuggestions: ['Pause music', 'Play classical', 'Check devices'],
-      };
-    }
-
-    let queryText = '';
     const cleanMsg = userMessage
       .replace(/^alexa[, ]*/i, '')
       .replace(/can you|please|could you|i want you to/gi, '')
       .trim();
 
-    // Check if specifically asking for any Spotify songs or general Spotify music
-    const isGeneralSpotifyQuery = /(?:play|stream)\s+(?:any|some|a)?\s*(?:spotify\s+songs?|songs?\s+(?:from|on)\s+spotify|music\s+(?:from|on)\s+spotify|spotify\s+music|spotify)/i.test(cleanMsg) ||
-      cleanMsg.toLowerCase() === 'spotify' ||
-      cleanMsg.toLowerCase() === 'play spotify' ||
-      cleanMsg.toLowerCase().includes('any spotify songs');
+    // 2a. Resume playback
+    if (lower === 'resume' || lower === 'resume music' || lower === 'alexa resume' || lower.includes('resume the music') || lower.includes('resume')) {
+      const res = await executeMcpTool('play_music', { action: 'resume' }, userId);
+      toolExecutions.push({ name: 'play_music', args: { action: 'resume' }, result: res, status: 'success', timestamp: executionTimestamp });
+      return {
+        response: `Resumed playback for "${res.current_track.title}" on YouTube.`,
+        toolExecutions,
+        followUpSuggestions: ['Pause music', 'Next song', 'Play relaxing music'],
+      };
+    }
 
-    if (isGeneralSpotifyQuery) {
-      queryText = 'spotify top hits';
-    } else {
-      const playMatch = cleanMsg.match(/(?:play|stream)(?:\s+the\s+song|\s+song|\s+track)?\s+([^,.]+?)(?:\s+on\s+spotify|\s+from\s+spotify|$)/i);
+    // 2b. Pause or Stop playback
+    if (
+      lower.includes('pause') ||
+      lower.includes('stop music') ||
+      lower.includes('stop the music') ||
+      lower === 'stop' ||
+      lower === 'pause' ||
+      lower === 'alexa stop' ||
+      lower === 'alexa pause'
+    ) {
+      const res = await executeMcpTool('play_music', { action: 'pause' }, userId);
+      toolExecutions.push({ name: 'play_music', args: { action: 'pause' }, result: res, status: 'success', timestamp: executionTimestamp });
+      return {
+        response: 'Music paused. Say "Alexa, resume" whenever you are ready to continue listening.',
+        toolExecutions,
+        followUpSuggestions: ['Resume', 'Next song', 'Play relaxing music'],
+      };
+    }
+
+    // 2c. Next track / Skip
+    if (lower.includes('next') || lower.includes('skip')) {
+      const res = await executeMcpTool('play_music', { action: 'next' }, userId);
+      toolExecutions.push({ name: 'play_music', args: { action: 'next' }, result: res, status: 'success', timestamp: executionTimestamp });
+      return {
+        response: `Playing next track: "${res.current_track.title}" on the YouTube player.`,
+        toolExecutions,
+        followUpSuggestions: ['Pause music', 'Next song', 'Play jazz'],
+      };
+    }
+
+    // 2d. Find song / Search results
+    const isSearchRequest =
+      lower.startsWith('find') ||
+      lower.startsWith('search for') ||
+      lower.includes('search results') ||
+      lower.includes('show me the search results') ||
+      lower.includes('show search results');
+
+    if (isSearchRequest) {
+      const searchTarget = cleanMsg
+        .replace(/^(?:find|search for|search|show me(?: the)? search results for|show me search results|show me the search results)\s*/i, '')
+        .replace(/on youtube|from youtube/gi, '')
+        .trim() || 'top music';
+
+      const searchResult = await executeMcpTool('search_music', { query: searchTarget }, userId);
+      toolExecutions.push({ name: 'search_music', args: { query: searchTarget }, result: searchResult, status: 'success', timestamp: executionTimestamp });
+
+      const tracks = searchResult.tracks || [];
+      if (tracks.length === 0) {
+        return {
+          response: searchResult.message || `No matching YouTube music tracks found for "${searchTarget}".`,
+          toolExecutions,
+          followUpSuggestions: ['Play relaxing music', 'Play lo-fi study music', 'Play classical piano'],
+        };
+      }
+
+      const listPreview = tracks.slice(0, 4).map((t: any, idx: number) => `${idx + 1}. **${t.title}** — *${t.artist}*`).join('\n');
+      return {
+        response: `Here are the top YouTube music results for **"${searchTarget}"**:\n\n${listPreview}\n\nWould you like me to play one of these, or select another song?`,
+        toolExecutions,
+        followUpSuggestions: [
+          `Play ${tracks[0].title}`,
+          'Play relaxing music',
+          'Next song',
+        ],
+      };
+    }
+
+    // 2e. Ambiguous check: user simply said "play" or "play music" without specifying track or artist
+    const bareCommand = cleanMsg.toLowerCase().replace(/alexa/gi, '').trim();
+    if (['play', 'play music', 'play a song', 'music', 'stream music', 'stream'].includes(bareCommand)) {
+      return {
+        response: 'What song or artist would you like to play on YouTube? You can say "Play Blinding Lights by The Weeknd", "Play songs by Queen", or "Play relaxing music".',
+        toolExecutions,
+        followUpSuggestions: [
+          'Play relaxing music',
+          'Play songs by Queen',
+          'Play lo-fi study music',
+        ],
+      };
+    }
+
+    // 2f. "Play [song] by [artist]"
+    let queryText = '';
+    let artistName = '';
+
+    const songByArtistMatch = cleanMsg.match(/(?:play|stream)(?:\s+the\s+song|\s+song|\s+track)?\s+([^,.]+?)\s+by\s+([^,.]+)/i);
+    if (songByArtistMatch && songByArtistMatch[1].trim() && songByArtistMatch[2].trim()) {
+      queryText = songByArtistMatch[1].trim();
+      artistName = songByArtistMatch[2].trim();
+    }
+
+    // 2g. "Play songs by [artist]"
+    if (!queryText) {
+      const songsByArtistMatch = cleanMsg.match(/(?:play|stream)\s+songs?\s+by\s+([^,.]+)/i);
+      if (songsByArtistMatch && songsByArtistMatch[1].trim()) {
+        artistName = songsByArtistMatch[1].trim();
+        queryText = `${artistName} songs`;
+      }
+    }
+
+    // 2h. Genre and mood queries (relaxing, lo-fi, jazz, classical, synthwave, acoustic)
+    if (!queryText) {
+      if (lower.includes('relax') || lower.includes('relaxing')) queryText = 'relaxing music';
+      else if (lower.includes('lo-fi') || lower.includes('lofi')) queryText = 'lo-fi beats';
+      else if (lower.includes('jazz')) queryText = 'smooth jazz';
+      else if (lower.includes('classical') || lower.includes('piano')) queryText = 'classical piano';
+      else if (lower.includes('synthwave') || lower.includes('electronic')) queryText = 'synthwave';
+      else if (lower.includes('acoustic')) queryText = 'acoustic guitar';
+    }
+
+    // 2i. General play [song name]
+    if (!queryText) {
+      const playMatch = cleanMsg.match(/(?:play|stream)(?:\s+the\s+song|\s+song|\s+track)?\s+([^,.]+?)(?:\s+on\s+youtube|\s+from\s+youtube|$)/i);
       if (playMatch && playMatch[1].trim()) {
         const candidate = playMatch[1].trim();
         const candidateLower = candidate.toLowerCase();
@@ -581,29 +696,22 @@ async function handleFallbackIntent(
           queryText = candidate;
         }
       }
-
-      if (!queryText) {
-        const spotifyMatch = cleanMsg.match(/(?:spotify)\s+([^,.]+)/i);
-        if (spotifyMatch && spotifyMatch[1].trim()) {
-          queryText = spotifyMatch[1].trim();
-        } else if (lower.includes('jazz')) queryText = 'jazz';
-        else if (lower.includes('classical') || lower.includes('piano')) queryText = 'classical';
-        else if (lower.includes('synthwave') || lower.includes('electronic')) queryText = 'synthwave';
-        else if (lower.includes('acoustic')) queryText = 'acoustic';
-        else queryText = 'spotify top hits';
-      }
     }
 
-    const res = await executeMcpTool('play_music', { query: queryText, action: 'play' }, userId);
-    toolExecutions.push({ name: 'play_music', args: { query: queryText }, result: res, status: 'success', timestamp: executionTimestamp });
+    if (!queryText) {
+      queryText = 'lofi hip hop radio';
+    }
 
-    const isSpotify = res.current_track.source === 'Spotify' || !!res.current_track.spotify_url;
+    const res = await executeMcpTool('play_music', { query: queryText, artist: artistName || undefined, action: 'play' }, userId);
+    toolExecutions.push({ name: 'play_music', args: { query: queryText, artist: artistName || undefined }, result: res, status: 'success', timestamp: executionTimestamp });
+
+    const vocalSongTitle = res.current_track?.title || queryText;
+    const vocalArtist = res.current_track?.artist ? ` by ${res.current_track.artist}` : '';
+
     return {
-      response: isSpotify
-        ? `🎶 Now playing the original song "${res.current_track.title}" by ${res.current_track.artist} from Spotify. Enjoy the complete track!`
-        : `🎶 Now playing "${res.current_track.title}" by ${res.current_track.artist} on Spotify. Enjoy the complete original song!`,
+      response: `🎶 Now playing "${vocalSongTitle}"${vocalArtist} on YouTube.`,
       toolExecutions,
-      followUpSuggestions: ['Pause music', 'Next track', 'Play another song on Spotify'],
+      followUpSuggestions: ['Pause music', 'Next song', 'Show me the search results'],
     };
   }
 

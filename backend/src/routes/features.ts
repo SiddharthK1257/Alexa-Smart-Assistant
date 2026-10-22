@@ -57,12 +57,29 @@ featuresRouter.post('/devices/control', async (req: Request, res: Response, next
 featuresRouter.get('/music/search', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const q = req.query.q as string;
-    if (!q) return res.json({ tracks: [] });
-    const tracks = await musicService.searchSpotifyTracks(q);
-    res.json({ tracks });
+    if (!q) {
+      return res.json({
+        tracks: [],
+        configured: musicService.isYouTubeConfigured(),
+        message: 'Provide a search query string "q" to search YouTube.',
+      });
+    }
+    const result = await musicService.searchYouTubeTracks(q);
+    res.json(result);
   } catch (err) {
     next(err);
   }
+});
+
+featuresRouter.get('/music/config', async (_req: Request, res: Response) => {
+  const configured = musicService.isYouTubeConfigured();
+  res.json({
+    configured,
+    source: 'YouTube',
+    message: configured
+      ? 'YouTube Data API v3 is configured and active.'
+      : 'YouTube Data API key is not configured. Add YOUTUBE_API_KEY to your server .env file to enable dynamic search.',
+  });
 });
 
 featuresRouter.get('/music/status', async (req: Request, res: Response, next: NextFunction) => {
@@ -87,7 +104,7 @@ featuresRouter.post('/music/control', async (req: Request, res: Response, next: 
   try {
     const { action, volume } = req.body;
     let state;
-    if (action === 'pause') {
+    if (action === 'pause' || action === 'stop') {
       state = await musicService.pauseMusic(req.user!.id);
     } else if (action === 'resume') {
       state = await musicService.resumeMusic(req.user!.id);

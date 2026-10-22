@@ -140,7 +140,7 @@ export const AlexaBeastSplash: React.FC<AlexaBeastSplashProps> = ({ onComplete }
                 transition={{ delay: 0.6, duration: 0.6 }}
                 className="text-xs sm:text-sm text-cyan-200/80 font-mono tracking-widest uppercase font-semibold"
               >
-                Intelligent Multimodal Voice • Spotify Lossless Stream • Global Concierge
+                Intelligent Multimodal Voice • YouTube Music Player • Global Concierge
               </motion.p>
             </div>
 

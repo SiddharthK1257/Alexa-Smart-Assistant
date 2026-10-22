@@ -108,20 +108,22 @@ export interface SuggestedDevice {
 
 export interface MusicTrack {
   id: string;
+  videoId: string;
   title: string;
   artist: string;
-  album: string;
+  channelTitle?: string;
+  album?: string;
   duration: number;
+  durationFormatted?: string;
   album_art: string;
-  genre: string;
+  thumbnail?: string;
+  genre?: string;
   mood?: string;
-  preview_url?: string;
-  spotify_url?: string;
-  spotify_uri?: string;
-  spotify_id?: string;
-  spotify_embed_url?: string;
-  full_audio_url?: string;
-  source?: string;
+  youtube_url: string;
+  embed_url: string;
+  source: 'YouTube';
+  description?: string;
+  publishedAt?: string;
 }
 
 export interface MusicPlaybackState {
@@ -130,6 +132,9 @@ export interface MusicPlaybackState {
   progress_seconds: number;
   volume: number;
   queue: MusicTrack[];
+  api_configured?: boolean;
+  message?: string;
+  error?: string | null;
 }
 
 export interface RecipeAllergenInfo {
@@ -545,14 +550,21 @@ export const api = {
       token
     ),
 
-  // --- 🎵 Music Playback ---
+  // --- 🎵 YouTube Music Playback ---
   getMusicStatus: (token: string | null) =>
     request<MusicPlaybackState>(`${API_BASE}/music/status`, {}, token),
 
-  searchMusic: (query: string, token: string | null = null) =>
-    request<{ tracks: MusicTrack[] }>(`${API_BASE}/music/search?q=${encodeURIComponent(query)}`, {}, token),
+  getMusicConfig: (token: string | null) =>
+    request<{ configured: boolean; source: string; message: string }>(`${API_BASE}/music/config`, {}, token),
 
-  playMusic: (options: { query?: string; artist?: string; genre?: string; mood?: string; trackId?: string }, token: string | null) =>
+  searchMusic: (query: string, token: string | null = null) =>
+    request<{ tracks: MusicTrack[]; configured?: boolean; error?: string; message?: string }>(
+      `${API_BASE}/music/search?q=${encodeURIComponent(query)}`,
+      {},
+      token
+    ),
+
+  playMusic: (options: { query?: string; artist?: string; genre?: string; mood?: string; trackId?: string; videoId?: string }, token: string | null) =>
     request<MusicPlaybackState>(
       `${API_BASE}/music/play`,
       {
@@ -562,7 +574,7 @@ export const api = {
       token
     ),
 
-  controlMusic: (action: 'pause' | 'resume' | 'next' | 'volume', volume?: number, token?: string | null) =>
+  controlMusic: (action: 'pause' | 'resume' | 'next' | 'volume' | 'stop', volume?: number, token?: string | null) =>
     request<MusicPlaybackState>(
       `${API_BASE}/music/control`,
       {

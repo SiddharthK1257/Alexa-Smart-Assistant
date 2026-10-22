@@ -67,16 +67,6 @@ const AppShell: React.FC = () => {
   const [currentPlayingTrack, setCurrentPlayingTrack] = useState<any | null>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
-  // Global persistent audio player: continuous playback till user says stop or pause
-  const globalAudioRef = React.useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    if (!globalAudioRef.current) {
-      globalAudioRef.current = new Audio();
-      globalAudioRef.current.loop = false; // NEVER loop 30 seconds
-    }
-  }, []);
-
   // Listen to music status updates from voice or assistant
   useEffect(() => {
     const handleMusicUpdate = (e?: any) => {
@@ -93,32 +83,6 @@ const AppShell: React.FC = () => {
     window.addEventListener('music-status-updated', handleMusicUpdate);
     return () => window.removeEventListener('music-status-updated', handleMusicUpdate);
   }, [token]);
-
-  // Handle continuous audio streaming across pages
-  useEffect(() => {
-    const audio = globalAudioRef.current;
-    if (!audio) return;
-
-    // Yield audio output when user is on /app/music dedicated player
-    if (location.pathname === '/app/music') {
-      audio.pause();
-      return;
-    }
-
-    if (currentPlayingTrack?.preview_url) {
-      if (audio.src !== currentPlayingTrack.preview_url) {
-        audio.src = currentPlayingTrack.preview_url;
-      }
-      audio.volume = 0.75;
-      if (isMusicPlaying) {
-        audio.play().catch(e => console.log('Audio autoplay prevented:', e));
-      } else {
-        audio.pause();
-      }
-    } else {
-      audio.pause();
-    }
-  }, [currentPlayingTrack, isMusicPlaying, location.pathname]);
 
   useEffect(() => {
     if (token) {

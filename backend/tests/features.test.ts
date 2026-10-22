@@ -30,8 +30,19 @@ describe('Alexa+ Extended Capabilities Test Suite', () => {
     });
   });
 
-  describe('1. 🎵 Music Playback & Audio Control', () => {
-    it('GET /api/music/status returns current playback track and state', async () => {
+  describe('1. 🎵 YouTube Music Playback & Audio Control', () => {
+    it('GET /api/music/config returns YouTube API configuration metadata', async () => {
+      const res = await request(app)
+        .get('/api/music/config')
+        .set('Authorization', `Bearer ${testToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('configured');
+      expect(res.body.source).toBe('YouTube');
+      expect(res.body).toHaveProperty('message');
+    });
+
+    it('GET /api/music/status returns current YouTube playback track and state without Spotify fields', async () => {
       const res = await request(app)
         .get('/api/music/status')
         .set('Authorization', `Bearer ${testToken}`);
@@ -40,9 +51,17 @@ describe('Alexa+ Extended Capabilities Test Suite', () => {
       expect(res.body).toHaveProperty('current_track');
       expect(res.body.current_track).toHaveProperty('title');
       expect(res.body.current_track).toHaveProperty('album_art');
+      expect(res.body.current_track).toHaveProperty('videoId');
+      expect(res.body.current_track).toHaveProperty('embed_url');
+      expect(res.body.current_track).toHaveProperty('youtube_url');
+      expect(res.body.current_track.source).toBe('YouTube');
+      // Ensure obsolete Spotify keys are removed
+      expect(res.body.current_track).not.toHaveProperty('spotify_id');
+      expect(res.body.current_track).not.toHaveProperty('spotify_uri');
+      expect(res.body.current_track).not.toHaveProperty('spotify_embed_url');
     });
 
-    it('POST /api/music/play starts track or genre playback', async () => {
+    it('POST /api/music/play starts track or genre playback with YouTube video', async () => {
       const res = await request(app)
         .post('/api/music/play')
         .set('Authorization', `Bearer ${testToken}`)
@@ -51,9 +70,12 @@ describe('Alexa+ Extended Capabilities Test Suite', () => {
       expect(res.status).toBe(200);
       expect(res.body.is_playing).toBe(true);
       expect(res.body.current_track.title.toLowerCase()).toContain('jazz');
+      expect(res.body.current_track.source).toBe('YouTube');
+      expect(res.body.current_track.youtube_url).toContain('youtube.com/watch');
+      expect(res.body.current_track.embed_url).toContain('youtube.com/embed');
     });
 
-    it('POST /api/music/control pauses and controls volume', async () => {
+    it('POST /api/music/control pauses, resumes, advances, and controls volume', async () => {
       const pauseRes = await request(app)
         .post('/api/music/control')
         .set('Authorization', `Bearer ${testToken}`)
@@ -62,6 +84,23 @@ describe('Alexa+ Extended Capabilities Test Suite', () => {
       expect(pauseRes.status).toBe(200);
       expect(pauseRes.body.is_playing).toBe(false);
 
+      const resumeRes = await request(app)
+        .post('/api/music/control')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ action: 'resume' });
+
+      expect(resumeRes.status).toBe(200);
+      expect(resumeRes.body.is_playing).toBe(true);
+
+      const nextRes = await request(app)
+        .post('/api/music/control')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ action: 'next' });
+
+      expect(nextRes.status).toBe(200);
+      expect(nextRes.body.is_playing).toBe(true);
+      expect(nextRes.body.current_track).toHaveProperty('videoId');
+
       const volRes = await request(app)
         .post('/api/music/control')
         .set('Authorization', `Bearer ${testToken}`)
@@ -69,6 +108,17 @@ describe('Alexa+ Extended Capabilities Test Suite', () => {
 
       expect(volRes.status).toBe(200);
       expect(volRes.body.volume).toBe(85);
+    });
+
+    it('GET /api/music/search handles query and missing API key gracefully', async () => {
+      const res = await request(app)
+        .get('/api/music/search?q=relaxing')
+        .set('Authorization', `Bearer ${testToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('tracks');
+      expect(Array.isArray(res.body.tracks)).toBe(true);
+      expect(res.body).toHaveProperty('configured');
     });
   });
 

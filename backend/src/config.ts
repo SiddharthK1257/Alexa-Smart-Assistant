@@ -15,6 +15,9 @@ const configSchema = z.object({
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
   GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
 
+  // YouTube Data API v3 (for official music search)
+  YOUTUBE_API_KEY: z.string().optional(),
+
   // Supabase
   SUPABASE_URL: z.string().url('SUPABASE_URL must be a valid URL'),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1, 'SUPABASE_PUBLISHABLE_KEY is required'),
