@@ -44,6 +44,7 @@ import { DevicesHubView } from './components/DevicesHubView';
 import { OpenTableView } from './components/OpenTableView';
 import { HotelsView } from './components/HotelsView';
 import { CalendarView } from './components/CalendarView';
+import { AlexaBeastSplash } from './components/AlexaBeastSplash';
 import { useAuth } from './context/AuthContext';
 import { api } from './services/api';
 
@@ -58,10 +59,66 @@ const AppShell: React.FC = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // Beast Font Opening Splash State (Opens in fade showing Alexa in beast font with animations)
+  const [showBeastSplash, setShowBeastSplash] = useState(true);
+
   // Quick Status Bar Live States
   const [isOpenTableLinked, setIsOpenTableLinked] = useState(false);
   const [currentPlayingTrack, setCurrentPlayingTrack] = useState<any | null>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+
+  // Global persistent audio player: continuous playback till user says stop or pause
+  const globalAudioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!globalAudioRef.current) {
+      globalAudioRef.current = new Audio();
+      globalAudioRef.current.loop = false; // NEVER loop 30 seconds
+    }
+  }, []);
+
+  // Listen to music status updates from voice or assistant
+  useEffect(() => {
+    const handleMusicUpdate = (e?: any) => {
+      if (e?.detail?.current_track) {
+        setCurrentPlayingTrack(e.detail.current_track);
+        setIsMusicPlaying(e.detail.is_playing ?? true);
+      } else if (token) {
+        api.getMusicStatus(token).then(res => {
+          setCurrentPlayingTrack(res.current_track);
+          setIsMusicPlaying(res.is_playing);
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('music-status-updated', handleMusicUpdate);
+    return () => window.removeEventListener('music-status-updated', handleMusicUpdate);
+  }, [token]);
+
+  // Handle continuous audio streaming across pages
+  useEffect(() => {
+    const audio = globalAudioRef.current;
+    if (!audio) return;
+
+    // Yield audio output when user is on /app/music dedicated player
+    if (location.pathname === '/app/music') {
+      audio.pause();
+      return;
+    }
+
+    if (currentPlayingTrack?.preview_url) {
+      if (audio.src !== currentPlayingTrack.preview_url) {
+        audio.src = currentPlayingTrack.preview_url;
+      }
+      audio.volume = 0.75;
+      if (isMusicPlaying) {
+        audio.play().catch(e => console.log('Audio autoplay prevented:', e));
+      } else {
+        audio.pause();
+      }
+    } else {
+      audio.pause();
+    }
+  }, [currentPlayingTrack, isMusicPlaying, location.pathname]);
 
   useEffect(() => {
     if (token) {
@@ -126,6 +183,11 @@ const AppShell: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0F19] text-gray-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+      {/* 0. Alexa Beast Font Figma Opening Animation */}
+      {showBeastSplash && (
+        <AlexaBeastSplash onComplete={() => setShowBeastSplash(false)} />
+      )}
+
       {/* 1. Independent Prototype Notice */}
       <DisclaimerBanner />
 
@@ -133,7 +195,12 @@ const AppShell: React.FC = () => {
       <header className="border-b border-gray-800/80 bg-[#111827]/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           {/* Logo & Brand with Iridescent Orb */}
-          <Link to="/" className="flex items-center gap-3 group shrink-0">
+          <Link
+            to="/"
+            onClick={() => setShowBeastSplash(true)}
+            className="flex items-center gap-3 group shrink-0 cursor-pointer"
+            title="Click to replay Alexa Beast Opening Animation"
+          >
             <div className="relative flex items-center justify-center">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 animate-pulse-slow p-0.5 group-hover:scale-105 transition-transform shadow-[0_0_14px_rgba(0,202,255,0.4)]">
                 <div className="w-full h-full bg-[#0B0F19] rounded-full flex items-center justify-center">
@@ -146,8 +213,8 @@ const AppShell: React.FC = () => {
                 <span className="font-extrabold text-base tracking-tight text-white flex items-center">
                   Alexa<span className="text-cyan-400">+</span>
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-                  Figma Edition
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 group-hover:bg-cyan-500/20 transition-colors">
+                  Beast Edition
                 </span>
               </div>
             </div>

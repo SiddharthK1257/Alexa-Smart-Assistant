@@ -54,13 +54,48 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([
-    'Play lo-fi study beats',
-    'Show me a healthy dinner recipe',
-    'What smart devices can I connect to?',
+    'Play Blinding Lights on Spotify',
+    'Show me Butter Chicken recipe with images',
+    'Nearest hotels in my place',
+    'Play Shape of You by Ed Sheeran',
     'Book a table for 2 on OpenTable',
-    'Book a hotel in Paris',
     'Show my calendar schedule',
   ]);
+
+  const [userCoords, setUserCoords] = useState<{ latitude?: number; longitude?: number; city?: string; country?: string } | null>(null);
+
+  // Auto-detect location coordinates & city for nearest hotel and local recommendations
+  useEffect(() => {
+    // 1. Instant IP geolocation lookup for city, country, and coordinates
+    fetch('https://ipapi.co/json/')
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.city) {
+          setUserCoords(prev => ({
+            latitude: prev?.latitude ?? d.latitude,
+            longitude: prev?.longitude ?? d.longitude,
+            city: d.city,
+            country: d.country_name,
+          }));
+        }
+      })
+      .catch(() => {});
+
+    // 2. High-precision browser GPS geolocation
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setUserCoords(prev => ({
+            ...prev,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }));
+        },
+        () => {},
+        { timeout: 6000, maximumAge: 120000 }
+      );
+    }
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { speak, isSpeaking, isMuted, toggleMute, stopSpeaking } = useSpeechSynthesis();
@@ -156,26 +191,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const messageContent = (textToSend || input).trim();
     if (!messageContent || isProcessing) return;
 
+    // If user is not yet logged in, auto-login with instant demo session so voice request works seamlessly
     if (!user) {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: String(Date.now()),
-          role: 'user',
-          content: messageContent,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-        {
-          id: String(Date.now() + 1),
-          role: 'assistant',
-          content:
-            'Please log in with Supabase Auth or use Instant Demo Login to manage your personal tasks, reminders, and notes.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isError: true,
-        },
-      ]);
-      setInput('');
-      return;
+      try {
+        await quickDemoLogin();
+      } catch (err) {
+        console.warn('Auto demo login for voice request:', err);
+      }
     }
 
     const userMessage: MessageItem = {
@@ -212,7 +234,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
         messageContent,
         history,
         token,
-        currentConversationId || undefined
+        currentConversationId || undefined,
+        userCoords || undefined
       );
 
       if (res.conversationId && (!currentConversationId || currentConversationId !== res.conversationId)) {
@@ -233,6 +256,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       if (res.followUpSuggestions && res.followUpSuggestions.length > 0) {
         setSuggestions(res.followUpSuggestions);
+      }
+
+      // Notify global audio player with full track info immediately
+      const musicExec = res.toolExecutions?.find(t => t.name === 'play_music');
+      if (musicExec && musicExec.result) {
+        window.dispatchEvent(new CustomEvent('music-status-updated', { detail: musicExec.result }));
       }
 
       // Vocal text-to-speech output

@@ -54,6 +54,17 @@ featuresRouter.post('/devices/control', async (req: Request, res: Response, next
 });
 
 // --- 🎵 MUSIC PLAYBACK ENDPOINTS ---
+featuresRouter.get('/music/search', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const q = req.query.q as string;
+    if (!q) return res.json({ tracks: [] });
+    const tracks = await musicService.searchSpotifyTracks(q);
+    res.json({ tracks });
+  } catch (err) {
+    next(err);
+  }
+});
+
 featuresRouter.get('/music/status', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const state = await musicService.getPlaybackStatus(req.user!.id);
@@ -94,14 +105,18 @@ featuresRouter.post('/music/control', async (req: Request, res: Response, next: 
 });
 
 // --- 🍳 KITCHEN RECIPES ENDPOINTS ---
-featuresRouter.get('/recipes', (req: Request, res: Response) => {
-  const { query, cuisine, dietary } = req.query;
-  const recipes = recipeService.searchRecipes(
-    query as string,
-    cuisine as string,
-    dietary as string
-  );
-  res.json({ recipes });
+featuresRouter.get('/recipes', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { query, cuisine, dietary } = req.query;
+    const recipes = await recipeService.searchRecipes(
+      query as string,
+      cuisine as string,
+      dietary as string
+    );
+    res.json({ recipes });
+  } catch (err) {
+    next(err);
+  }
 });
 
 featuresRouter.get('/recipes/:id', (req: Request, res: Response) => {
@@ -180,12 +195,28 @@ featuresRouter.get('/opentable/reservations', async (req: Request, res: Response
 
 // --- 🏨 HOTEL & TRAVEL ENDPOINTS ---
 featuresRouter.get('/hotels', (req: Request, res: Response) => {
-  const { destination, min_rating, max_price } = req.query;
+  const { destination, min_rating, max_price, continent, nearest, lat, lng, place } = req.query;
+  if (nearest === 'true' || (lat && lng) || place) {
+    const parsedLat = lat ? parseFloat(lat as string) : undefined;
+    const parsedLng = lng ? parseFloat(lng as string) : undefined;
+    const hotels = hotelService.searchNearestHotels(parsedLat, parsedLng, (place || destination) as string);
+    return res.json({ hotels });
+  }
+
   const hotels = hotelService.searchHotels(
     destination as string,
     min_rating ? parseFloat(min_rating as string) : undefined,
-    max_price ? parseFloat(max_price as string) : undefined
+    max_price ? parseFloat(max_price as string) : undefined,
+    continent as string
   );
+  res.json({ hotels });
+});
+
+featuresRouter.get('/hotels/nearest', (req: Request, res: Response) => {
+  const { lat, lng, place } = req.query;
+  const parsedLat = lat ? parseFloat(lat as string) : undefined;
+  const parsedLng = lng ? parseFloat(lng as string) : undefined;
+  const hotels = hotelService.searchNearestHotels(parsedLat, parsedLng, place as string);
   res.json({ hotels });
 });
 

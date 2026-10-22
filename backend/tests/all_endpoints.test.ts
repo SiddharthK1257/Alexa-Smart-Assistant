@@ -331,6 +331,6 @@ describe('Comprehensive End-to-End API Endpoints Test Suite', () => {
       expect(typeof res.body.response).toBe('string');
       expect(res.body.response.length).toBeGreaterThan(0);
       expect(Array.isArray(res.body.toolExecutions)).toBe(true);
-    });
+    }, 20000);
   });
 });

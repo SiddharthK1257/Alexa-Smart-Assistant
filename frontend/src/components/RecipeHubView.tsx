@@ -7,23 +7,62 @@ import {
   ShieldAlert,
   AlertTriangle,
   Search,
-  CheckCircle2,
-  Sparkles,
   ChevronRight,
-  Info,
   X,
   ChefHat,
   Users,
+  Mic,
+  MicOff,
+  Globe,
+  Loader2,
 } from 'lucide-react';
 import { api, KitchenRecipe } from '../services/api';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 
 export const RecipeHubView: React.FC = () => {
   const [recipes, setRecipes] = useState<KitchenRecipe[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCuisine, setSelectedCuisine] = useState('All');
   const [selectedDiet, setSelectedDiet] = useState('All');
   const [activeRecipe, setActiveRecipe] = useState<KitchenRecipe | null>(null);
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { speak } = useSpeechSynthesis();
+
+  // Voice Dish Search
+  const handleVoiceDishQuery = async (spokenText: string) => {
+    if (!spokenText.trim()) return;
+    const cleanDish = spokenText
+      .replace(/^alexa[, ]*/i, '')
+      .replace(/recipe for|how to make|recipe of|make|cook|dishes for|show me(?: a)? recipe for|dish/gi, '')
+      .replace(/with images|with image|images|image|please/gi, '')
+      .trim();
+
+    const queryToSearch = cleanDish || spokenText.trim();
+    setSearchQuery(queryToSearch);
+    await performSearch(queryToSearch);
+  };
+
+  const { isListening, toggleListening } = useSpeechRecognition(handleVoiceDishQuery);
+
+  const performSearch = async (queryText: string) => {
+    setIsLoading(true);
+    try {
+      const res = await api.getRecipes(queryText);
+      setRecipes(res.recipes);
+      if (res.recipes.length > 0) {
+        setActiveRecipe(res.recipes[0]);
+        speak(`Found recipe for ${res.recipes[0].title}. Displaying ingredients, instructions, and allergen safety profile.`);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     api.getRecipes().then(res => {
@@ -34,20 +73,34 @@ export const RecipeHubView: React.FC = () => {
     }).catch(console.error);
   }, []);
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      performSearch(searchQuery.trim());
+    }
+  };
+
+  const cuisines = ['All', 'Italian', 'Asian', 'Indian', 'Mexican', 'French', 'Mediterranean', 'American'];
   const dietaryOptions = ['All', 'Nut-Free', 'Vegan', 'Dairy-Free', 'Gluten-Free', 'Keto-Friendly'];
 
   const filteredRecipes = recipes.filter(r => {
     const matchesSearch =
+      !searchQuery ||
       r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.ingredients.some(i => i.toLowerCase().includes(searchQuery.toLowerCase()));
+      r.ingredients.some(i => i.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      r.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCuisine =
+      selectedCuisine === 'All' ||
+      r.cuisine.toLowerCase().includes(selectedCuisine.toLowerCase());
 
     const matchesDiet =
       selectedDiet === 'All' ||
       r.dietaryTags.some(t => t.toLowerCase().includes(selectedDiet.toLowerCase())) ||
       r.allergenSafety.isSafeFor.some(s => s.toLowerCase().includes(selectedDiet.toLowerCase()));
 
-    return matchesSearch && matchesDiet;
+    return matchesSearch && matchesCuisine && matchesDiet;
   });
 
   const toggleIngredient = (ing: string) => {
@@ -68,52 +121,104 @@ export const RecipeHubView: React.FC = () => {
               <ChefHat className="w-4 h-4 text-cyan-400" />
             </div>
             <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              Alexa<span className="text-cyan-400">+</span> Kitchen & Recipe Intelligence
+              Alexa<span className="text-cyan-400">+</span> World Recipes & Food Safety
             </h1>
           </div>
           <p className="text-xs text-gray-400">
-            Smart culinary assistance with high-resolution food photography, step-by-step cooking, and comprehensive dietary & allergen safety analysis.
+            Ask by voice for any dish in the world — discover authentic recipes with photography, step-by-step cooking, and allergen safety assessments.
           </p>
         </div>
 
-        {/* Safety Assurance Badge */}
-        <div className="flex items-center gap-2 bg-[#0B0F19]/80 border border-emerald-500/40 px-3.5 py-2 rounded-2xl shrink-0">
-          <ShieldCheck className="w-5 h-5 text-emerald-400" />
-          <div className="text-left text-xs">
-            <span className="font-bold text-emerald-300 block">Allergen & Safety Vetted</span>
-            <span className="text-[10px] text-gray-400">Evaluates safe consumption for all guests</span>
+        {/* Safety Assurance Badge & Voice Indicator */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-[#0B0F19]/80 border border-emerald-500/40 px-3.5 py-2 rounded-2xl shrink-0">
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <div className="text-left text-xs">
+              <span className="font-bold text-emerald-300 block">Allergen & Safety Vetted</span>
+              <span className="text-[10px] text-gray-400">Evaluates dietary safety for all guests</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Search & Dietary Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-[#111827] p-3 rounded-2xl border border-gray-800">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search recipes, ingredients, cuisines..."
-            className="w-full bg-[#0B0F19] border border-gray-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-400"
-          />
-        </div>
+      {/* Voice & Text Search Bar */}
+      <div className="bg-[#111827] p-4 rounded-3xl border border-gray-800 space-y-3 shadow-xl">
+        <form onSubmit={handleSearchSubmit} className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Ask for any dish in the world (e.g., Butter Chicken, Tonkotsu Ramen, Paella, Tacos al Pastor)..."
+              className="w-full bg-[#0B0F19] border border-gray-700 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-400 transition-colors"
+            />
+            {isLoading && (
+              <Loader2 className="w-4 h-4 text-cyan-400 animate-spin absolute right-3.5 top-3" />
+            )}
+          </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-          {dietaryOptions.map(diet => (
-            <button
-              key={diet}
-              type="button"
-              onClick={() => setSelectedDiet(diet)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
-                selectedDiet === diet
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'bg-gray-800/60 text-gray-400 hover:text-gray-200 border border-transparent'
-              }`}
-            >
-              {diet}
-            </button>
-          ))}
+          {/* Voice Search Button */}
+          <button
+            type="button"
+            onClick={toggleListening}
+            className={`p-2.5 rounded-2xl border transition-all flex items-center gap-2 text-xs font-bold shrink-0 ${
+              isListening
+                ? 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/30 animate-pulse'
+                : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
+            }`}
+            title="Ask in voice for any dish in the world"
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            <span className="hidden sm:inline">{isListening ? 'Listening...' : 'Voice Search'}</span>
+          </button>
+
+          <button
+            type="submit"
+            className="px-4 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs transition-all shrink-0"
+          >
+            Find Recipe
+          </button>
+        </form>
+
+        {/* Cuisines & Diets Filter Tabs */}
+        <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center pt-1 border-t border-gray-800/60">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 text-xs">
+            <span className="text-gray-400 font-semibold text-[11px] flex items-center gap-1 shrink-0">
+              <Globe className="w-3.5 h-3.5 text-cyan-400" /> Cuisines:
+            </span>
+            {cuisines.map(c => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setSelectedCuisine(c)}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-medium whitespace-nowrap transition-all ${
+                  selectedCuisine === c
+                    ? 'bg-cyan-500 text-black font-bold shadow-md'
+                    : 'bg-gray-800/60 text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 text-xs">
+            {dietaryOptions.map(diet => (
+              <button
+                key={diet}
+                type="button"
+                onClick={() => setSelectedDiet(diet)}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-medium whitespace-nowrap transition-all ${
+                  selectedDiet === diet
+                    ? 'bg-purple-500/30 text-purple-200 border border-purple-400/50 shadow-sm'
+                    : 'bg-gray-800/40 text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                {diet}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -135,7 +240,7 @@ export const RecipeHubView: React.FC = () => {
                     alt={recipe.title}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
 
                   {/* Safety Indicator Pill on Image */}
                   <div className="absolute top-3 right-3">
@@ -233,12 +338,12 @@ export const RecipeHubView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveRecipe(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors z-10"
             >
               <X className="w-5 h-5" />
             </button>
 
-            {/* Modal Hero Banner */}
+            {/* Modal Hero Banner with Dish Image */}
             <div className="relative h-64 rounded-2xl overflow-hidden border border-gray-700">
               <img
                 src={activeRecipe.imageUrl}
@@ -248,145 +353,123 @@ export const RecipeHubView: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 space-y-1">
                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-semibold">
-                  {activeRecipe.cuisine} • {activeRecipe.difficulty} Difficulty
+                  {activeRecipe.cuisine}
                 </span>
                 <h2 className="text-xl font-extrabold text-white">{activeRecipe.title}</h2>
               </div>
             </div>
 
-            {/* Comprehensive Allergen & Safety Analysis Box (Highlighted) */}
-            <div className="p-4 rounded-2xl bg-[#0B0F19] border border-cyan-500/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-cyan-400" />
-                  <span className="font-bold text-sm text-cyan-200">
-                    Comprehensive Safety & Allergen Assessment
-                  </span>
-                </div>
-                <span
-                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                    activeRecipe.allergenSafety.safetyRating === 'Safe for All'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  }`}
-                >
-                  {activeRecipe.allergenSafety.safetyRating}
-                </span>
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-4 gap-2 text-center bg-[#0B0F19] p-3 rounded-2xl border border-gray-800 text-xs">
+              <div>
+                <span className="text-gray-400 block text-[10px]">Prep Time</span>
+                <span className="font-bold text-gray-200">{activeRecipe.prepTime}</span>
+              </div>
+              <div>
+                <span className="text-gray-400 block text-[10px]">Cook Time</span>
+                <span className="font-bold text-gray-200">{activeRecipe.cookTime}</span>
+              </div>
+              <div>
+                <span className="text-gray-400 block text-[10px]">Servings</span>
+                <span className="font-bold text-purple-300">{activeRecipe.servings} People</span>
+              </div>
+              <div>
+                <span className="text-gray-400 block text-[10px]">Calories</span>
+                <span className="font-bold text-orange-300">{activeRecipe.caloriesPerServing} kcal</span>
+              </div>
+            </div>
+
+            {/* Comprehensive Allergen Safety Box */}
+            <div
+              className={`p-4 rounded-2xl space-y-3 ${
+                activeRecipe.allergenSafety.safetyRating === 'Safe for All'
+                  ? 'bg-emerald-950/40 border border-emerald-500/40'
+                  : 'bg-amber-950/40 border border-amber-500/40'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <h4 className="font-bold text-sm text-white">Allergen & Health Assessment</h4>
               </div>
 
               <p className="text-xs text-gray-300 leading-relaxed">
                 {activeRecipe.allergenSafety.safetyNotice}
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 text-xs">
-                <div className="space-y-1 p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/20">
-                  <span className="font-bold text-emerald-300 text-[11px] block">
-                    ✅ Safe For Other People / Diets:
-                  </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
+                <div>
+                  <span className="font-bold text-emerald-300 block mb-1">Safe Groups:</span>
                   <ul className="list-disc list-inside space-y-0.5 text-gray-300 text-[11px]">
-                    {activeRecipe.allergenSafety.isSafeFor.map((item, i) => (
-                      <li key={i}>{item}</li>
+                    {activeRecipe.allergenSafety.isSafeFor.map((g, idx) => (
+                      <li key={idx}>{g}</li>
                     ))}
                   </ul>
                 </div>
-
-                <div className="space-y-1 p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/20">
-                  <span className="font-bold text-amber-300 text-[11px] block">
-                    ⚠️ Caution Groups / Allergens Present:
-                  </span>
+                <div>
+                  <span className="font-bold text-amber-300 block mb-1">Caution / Allergens:</span>
                   <ul className="list-disc list-inside space-y-0.5 text-gray-300 text-[11px]">
-                    {activeRecipe.allergenSafety.cautionGroups.map((item, i) => (
-                      <li key={i}>{item}</li>
+                    {activeRecipe.allergenSafety.cautionGroups.map((c, idx) => (
+                      <li key={idx}>{c}</li>
                     ))}
                   </ul>
                 </div>
               </div>
+            </div>
 
-              {/* Population Guidelines (Pregnancy, Toddlers, Diabetics) */}
-              {activeRecipe.allergenSafety.populationWarnings && (
-                <div className="p-2.5 rounded-xl bg-cyan-950/30 border border-cyan-500/20 text-[11px] text-gray-300 space-y-1">
-                  <span className="font-bold text-cyan-300 flex items-center gap-1">
-                    <Info className="w-3.5 h-3.5" />
-                    Special Population Guidelines:
-                  </span>
-                  {activeRecipe.allergenSafety.populationWarnings.pregnancyCaution && (
-                    <p>🤰 <strong>Pregnancy:</strong> {activeRecipe.allergenSafety.populationWarnings.pregnancyCaution}</p>
-                  )}
-                  {activeRecipe.allergenSafety.populationWarnings.toddlerCaution && (
-                    <p>👶 <strong>Children & Toddlers:</strong> {activeRecipe.allergenSafety.populationWarnings.toddlerCaution}</p>
-                  )}
-                  {activeRecipe.allergenSafety.populationWarnings.diabeticCaution && (
-                    <p>🩺 <strong>Diabetic / Blood Sugar:</strong> {activeRecipe.allergenSafety.populationWarnings.diabeticCaution}</p>
-                  )}
+            {/* Ingredients & Step-by-Step Instructions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Ingredients List */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                  <Utensils className="w-4 h-4 text-cyan-400" /> Ingredients
+                </h4>
+                <div className="space-y-1.5 bg-[#0B0F19] p-3 rounded-2xl border border-gray-800 text-xs">
+                  {activeRecipe.ingredients.map((ing, idx) => (
+                    <label
+                      key={idx}
+                      className="flex items-start gap-2 p-1.5 rounded-lg hover:bg-gray-800/40 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!checkedIngredients[ing]}
+                        onChange={() => toggleIngredient(ing)}
+                        className="rounded border-gray-700 text-cyan-500 focus:ring-0 mt-0.5"
+                      />
+                      <span className={`text-[11px] ${checkedIngredients[ing] ? 'line-through text-gray-500' : 'text-gray-300'}`}>
+                        {ing}
+                      </span>
+                    </label>
+                  ))}
                 </div>
-              )}
-            </div>
-
-            {/* Ingredients Section */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-gray-200 flex items-center gap-2">
-                <Utensils className="w-4 h-4 text-cyan-400" />
-                <span>Ingredients Checklist</span>
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                {activeRecipe.ingredients.map((ing, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => toggleIngredient(ing)}
-                    className={`flex items-center gap-2.5 p-2 rounded-xl border cursor-pointer transition-all ${
-                      checkedIngredients[ing]
-                        ? 'bg-emerald-950/30 border-emerald-500/40 text-gray-400 line-through'
-                        : 'bg-gray-800/40 border-gray-700/60 text-gray-200 hover:border-cyan-500/40'
-                    }`}
-                  >
-                    <CheckCircle2 className={`w-4 h-4 ${checkedIngredients[ing] ? 'text-emerald-400' : 'text-gray-500'}`} />
-                    <span>{ing}</span>
-                  </div>
-                ))}
               </div>
-            </div>
 
-            {/* Step-by-Step Directions */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-gray-200 flex items-center gap-2">
-                <ChefHat className="w-4 h-4 text-cyan-400" />
-                <span>Step-by-Step Cooking Instructions</span>
-              </h3>
-              <div className="space-y-2.5">
-                {activeRecipe.instructions.map((step, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => toggleStep(idx)}
-                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 ${
-                      checkedSteps[idx]
-                        ? 'bg-emerald-950/30 border-emerald-500/40 text-gray-400'
-                        : 'bg-[#0B0F19] border-gray-800 text-gray-200 hover:border-cyan-500/40'
-                    }`}
-                  >
-                    <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold text-xs flex items-center justify-center shrink-0">
-                      {idx + 1}
-                    </span>
-                    <p className={`text-xs leading-relaxed ${checkedSteps[idx] ? 'line-through' : ''}`}>
-                      {step}
-                    </p>
-                  </div>
-                ))}
+              {/* Instructions */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                  <ChefHat className="w-4 h-4 text-cyan-400" /> Cooking Instructions
+                </h4>
+                <div className="space-y-2 text-xs">
+                  {activeRecipe.instructions.map((step, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => toggleStep(idx)}
+                      className={`p-3 rounded-2xl border cursor-pointer transition-all ${
+                        checkedSteps[idx]
+                          ? 'bg-gray-900/60 border-gray-800 opacity-60'
+                          : 'bg-[#0B0F19] border-gray-800 hover:border-cyan-500/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold text-[10px] flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-semibold">Step {idx + 1}</span>
+                      </div>
+                      <p className="text-[11px] text-gray-300 leading-relaxed">{step}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            {/* Alexa Vocal Assist Banner */}
-            <div className="p-3 rounded-2xl bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-between text-xs text-cyan-200">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
-                <span>Hands-free kitchen voice control: <em>"Alexa, what is step {activeRecipe.instructions.length > 1 ? '2' : '1'}?"</em></span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveRecipe(null)}
-                className="px-3 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs transition-colors"
-              >
-                Done Cooking
-              </button>
             </div>
           </div>
         </div>

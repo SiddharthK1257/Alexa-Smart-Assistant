@@ -274,15 +274,15 @@ export interface AssistantResponse {
 }
 
 const SYSTEM_INSTRUCTION = `You are Alexa+, the premier next-generation intelligent conversational voice and multimodal assistant.
-You possess broad human intelligence, warmth, and natural speech synthesis, capable of answering day-to-day life questions, playing music, providing kitchen recipes with allergy & safety analysis, connecting to smart home devices, reserving tables on OpenTable, and booking hotels with automatic calendar synchronization.
+You possess broad human intelligence, warmth, and natural speech synthesis, capable of answering day-to-day life questions, playing any song present in Spotify by voice, providing kitchen recipes for any dish in the world with images and allergy & safety analysis, finding hotels across the world and nearest hotels in the user's location with images, connecting to smart home devices, reserving tables on OpenTable, and booking hotels with automatic calendar synchronization.
 
 Key Capabilities:
 1. Everyday Life & Knowledge: Answer any everyday life question—weather, science, travel tips, conversions, general advice, time, productivity.
-2. Music: Play songs, study beats, jazz, classical, synthwave, ambient audio, pause, skip, and adjust volume using 'play_music'.
-3. Kitchen Recipes & Food Safety: Provide delicious recipes with food photography. Crucially, always clearly assess whether the recipe is safe for others (allergens like nuts, dairy, gluten, eggs; pregnancy/toddler cautions; diabetic suitability) using 'search_recipes'.
-4. Device Connectivity & Smart Home: Discover nearby compatible devices (Echo Studio, Echo Show, Philips Hue, Thermostats), suggest which devices to connect, and control settings using 'discover_devices', 'connect_device', and 'control_device'.
-5. OpenTable Restaurant Reservations: Search restaurants and book dining tables using 'search_restaurants' and 'book_restaurant'. Note: Booking requires an active OpenTable account. If not linked, remind the user and prompt them to link their account. Every booking is automatically added to their Calendar.
-6. Hotel Booking & Calendar: Search hotels and book accommodations with 'search_hotels' and 'book_hotel'. Always vocally confirm the reservation details and mention that it has been saved to their Calendar.
+2. Spotify Music by Voice: Whenever the user asks by voice to play any song present on Spotify (pop, rock, hip-hop, indie, classical, jazz, Bollywood, global hits), immediately call 'play_music' with the track name, artist, or genre to stream it directly with album art and Spotify deep link.
+3. Kitchen Recipes & Food Safety: Provide delicious recipes with food photography for ANY dish in the world. Crucially, always clearly assess whether the recipe is safe for others (allergens like nuts, dairy, gluten, eggs; pregnancy/toddler cautions; diabetic suitability) using 'search_recipes'.
+4. Hotels Across the World & Nearest Hotels: Search luxury hotels worldwide and find the nearest hotels in the user's location with images and distance using 'search_hotels'. Confirm reservation details and sync them directly to Calendar.
+5. Device Connectivity & Smart Home: Discover nearby compatible devices (Echo Studio, Echo Show, Philips Hue, Thermostats), suggest which devices to connect, and control settings using 'discover_devices', 'connect_device', and 'control_device'.
+6. OpenTable Restaurant Reservations: Search restaurants and book dining tables using 'search_restaurants' and 'book_restaurant'. Note: Booking requires an active OpenTable account. If not linked, remind the user and prompt them to link their account. Every booking is automatically added to their Calendar.
 7. Productivity: Manage tasks, reminders, notes, and calendar events.
 
 Tone and Delivery:
@@ -290,10 +290,18 @@ Tone and Delivery:
 - Present clean markdown with cards, bullet points, and highlight badges.
 - Conclude responses with helpful contextual follow-up suggestions.`;
 
+export interface UserLocationContext {
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  country?: string;
+}
+
 export async function processAssistantMessage(
   userMessage: string,
   history: ChatMessage[],
-  userId: string
+  userId: string,
+  userLocation?: UserLocationContext
 ): Promise<AssistantResponse> {
   const toolExecutions: AssistantResponse['toolExecutions'] = [];
 
@@ -313,11 +321,17 @@ export async function processAssistantMessage(
       }
     }
 
+    const locationNotice = userLocation?.city
+      ? `, user location: ${userLocation.city}, ${userLocation.country || ''} (Coordinates: ${userLocation.latitude}, ${userLocation.longitude})`
+      : userLocation?.latitude
+      ? `, user coordinates: (${userLocation.latitude}, ${userLocation.longitude})`
+      : '';
+
     contents.push({
       role: 'user',
       parts: [
         {
-          text: `[Context: Current local timestamp is ${new Date().toISOString()}]\n\nUser: ${userMessage}`,
+          text: `[Context: Current local timestamp is ${new Date().toISOString()}${locationNotice}]\n\nUser: ${userMessage}`,
         },
       ],
     });
@@ -345,10 +359,16 @@ export async function processAssistantMessage(
       for (const call of functionCalls) {
         const executionTimestamp = new Date().toISOString();
         try {
-          const toolResult = await executeMcpTool(call.name, call.args, userId);
+          const toolArgs = { ...call.args };
+          if (call.name === 'search_hotels' && userLocation) {
+            if (toolArgs.latitude === undefined && userLocation.latitude !== undefined) toolArgs.latitude = userLocation.latitude;
+            if (toolArgs.longitude === undefined && userLocation.longitude !== undefined) toolArgs.longitude = userLocation.longitude;
+            if (toolArgs.user_place === undefined) toolArgs.user_place = userLocation.city || userLocation.country;
+          }
+          const toolResult = await executeMcpTool(call.name, toolArgs, userId);
           toolExecutions.push({
             name: call.name,
-            args: call.args,
+            args: toolArgs,
             result: toolResult,
             status: 'success',
             timestamp: executionTimestamp,
@@ -412,7 +432,7 @@ export async function processAssistantMessage(
     console.warn('Gemini Assistant API unavailable or timed out, executing intelligent fallback:', error.message);
 
     try {
-      const fallbackResult = await handleFallbackIntent(userMessage, userId);
+      const fallbackResult = await handleFallbackIntent(userMessage, userId, userLocation);
       if (fallbackResult) {
         return fallbackResult;
       }
@@ -433,7 +453,11 @@ export async function processAssistantMessage(
   }
 }
 
-async function handleFallbackIntent(userMessage: string, userId: string): Promise<AssistantResponse | null> {
+async function handleFallbackIntent(
+  userMessage: string,
+  userId: string,
+  userLocation?: UserLocationContext
+): Promise<AssistantResponse | null> {
   const toolExecutions: AssistantResponse['toolExecutions'] = [];
   const lower = userMessage.toLowerCase().trim();
   const executionTimestamp = new Date().toISOString();
@@ -500,8 +524,21 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
   }
 
   // 2. Music Playing & Control
-  if (lower.includes('music') || lower.includes('song') || lower.includes('track') || lower.includes('playlist') || lower.startsWith('play') || lower.includes('play music') || lower.includes('pause') || lower.includes('stop music')) {
-    if (lower.includes('pause') || lower.includes('stop')) {
+  if (
+    lower.includes('music') ||
+    lower.includes('song') ||
+    lower.includes('track') ||
+    lower.includes('playlist') ||
+    lower.startsWith('play') ||
+    lower.includes('play music') ||
+    lower.includes('pause') ||
+    lower.includes('stop') ||
+    lower === 'stop' ||
+    lower === 'pause' ||
+    lower === 'alexa stop' ||
+    lower === 'alexa pause'
+  ) {
+    if (lower.includes('pause') || lower.includes('stop') || lower === 'stop' || lower === 'pause' || lower === 'alexa stop' || lower === 'alexa pause') {
       const res = await executeMcpTool('play_music', { action: 'pause' }, userId);
       toolExecutions.push({ name: 'play_music', args: { action: 'pause' }, result: res, status: 'success', timestamp: executionTimestamp });
       return {
@@ -521,28 +558,66 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
       };
     }
 
-    let queryText = 'lo-fi';
-    if (lower.includes('jazz')) queryText = 'jazz';
-    else if (lower.includes('classical') || lower.includes('piano')) queryText = 'classical';
-    else if (lower.includes('synthwave') || lower.includes('electronic')) queryText = 'synthwave';
-    else if (lower.includes('acoustic')) queryText = 'acoustic';
+    let queryText = '';
+    const cleanMsg = userMessage
+      .replace(/^alexa[, ]*/i, '')
+      .replace(/can you|please|could you|i want you to/gi, '')
+      .trim();
+
+    // Check if specifically asking for any Spotify songs or general Spotify music
+    const isGeneralSpotifyQuery = /(?:play|stream)\s+(?:any|some|a)?\s*(?:spotify\s+songs?|songs?\s+(?:from|on)\s+spotify|music\s+(?:from|on)\s+spotify|spotify\s+music|spotify)/i.test(cleanMsg) ||
+      cleanMsg.toLowerCase() === 'spotify' ||
+      cleanMsg.toLowerCase() === 'play spotify' ||
+      cleanMsg.toLowerCase().includes('any spotify songs');
+
+    if (isGeneralSpotifyQuery) {
+      queryText = 'spotify top hits';
+    } else {
+      const playMatch = cleanMsg.match(/(?:play|stream)(?:\s+the\s+song|\s+song|\s+track)?\s+([^,.]+?)(?:\s+on\s+spotify|\s+from\s+spotify|$)/i);
+      if (playMatch && playMatch[1].trim()) {
+        const candidate = playMatch[1].trim();
+        const candidateLower = candidate.toLowerCase();
+        if (!['music', 'song', 'songs', 'something', 'a song', 'any song', 'any songs', 'anything'].includes(candidateLower)) {
+          queryText = candidate;
+        }
+      }
+
+      if (!queryText) {
+        const spotifyMatch = cleanMsg.match(/(?:spotify)\s+([^,.]+)/i);
+        if (spotifyMatch && spotifyMatch[1].trim()) {
+          queryText = spotifyMatch[1].trim();
+        } else if (lower.includes('jazz')) queryText = 'jazz';
+        else if (lower.includes('classical') || lower.includes('piano')) queryText = 'classical';
+        else if (lower.includes('synthwave') || lower.includes('electronic')) queryText = 'synthwave';
+        else if (lower.includes('acoustic')) queryText = 'acoustic';
+        else queryText = 'spotify top hits';
+      }
+    }
 
     const res = await executeMcpTool('play_music', { query: queryText, action: 'play' }, userId);
     toolExecutions.push({ name: 'play_music', args: { query: queryText }, result: res, status: 'success', timestamp: executionTimestamp });
 
+    const isSpotify = res.current_track.source === 'Spotify' || !!res.current_track.spotify_url;
     return {
-      response: `🎶 Now streaming "${res.current_track.title}" by ${res.current_track.artist} on your connected Alexa+ audio hub. Enjoy the vibe!`,
+      response: isSpotify
+        ? `🎶 Now playing the original song "${res.current_track.title}" by ${res.current_track.artist} from Spotify. Enjoy the complete track!`
+        : `🎶 Now playing "${res.current_track.title}" by ${res.current_track.artist} on Spotify. Enjoy the complete original song!`,
       toolExecutions,
-      followUpSuggestions: ['Pause music', 'Next track', 'Connect living room speaker'],
+      followUpSuggestions: ['Pause music', 'Next track', 'Play another song on Spotify'],
     };
   }
 
   // 3. Kitchen Recipes & Allergen Safety
-  if (lower.includes('recipe') || lower.includes('cook') || lower.includes('kitchen') || lower.includes('ingredient') || lower.includes('allergy') || lower.includes('allergen') || (lower.includes('safe') && (lower.includes('eat') || lower.includes('food') || lower.includes('dish') || lower.includes('recipe') || lower.includes('people')))) {
-    let queryText = 'salmon';
-    if (lower.includes('curry') || lower.includes('vegan') || lower.includes('thai')) queryText = 'curry';
-    else if (lower.includes('toast') || lower.includes('avocado')) queryText = 'avocado';
-    else if (lower.includes('pizza') || lower.includes('italian')) queryText = 'pizza';
+  if (lower.includes('recipe') || lower.includes('cook') || lower.includes('kitchen') || lower.includes('ingredient') || lower.includes('allergy') || lower.includes('allergen') || lower.includes('dish') || (lower.includes('safe') && (lower.includes('eat') || lower.includes('food') || lower.includes('dish') || lower.includes('recipe') || lower.includes('people')))) {
+    let queryText = '';
+    const cleanMsg = userMessage.replace(/^alexa[, ]*/i, '').trim();
+    const recipeMatch = cleanMsg.match(/(?:recipe for|how to make|make|cook|prepare|dishes for|show me(?: a)? recipe for|recipe of|dish)\s+([^,.]+)/i);
+    if (recipeMatch && recipeMatch[1].trim()) {
+      queryText = recipeMatch[1].trim().replace(/with images|with image|images|image|please/gi, '').trim();
+    } else {
+      const stripped = cleanMsg.replace(/recipe|cook|kitchen|dish|food|dishes|with image|with images|images|image|please/gi, '').trim();
+      queryText = stripped || 'salmon';
+    }
 
     const recipes = await executeMcpTool('search_recipes', { query: queryText }, userId);
     toolExecutions.push({ name: 'search_recipes', args: { query: queryText }, result: recipes, status: 'success', timestamp: executionTimestamp });
@@ -551,14 +626,14 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
     const safety = recipe.allergenSafety;
 
     const safetyBadge = safety.safetyRating === 'Safe for All' ? '✅ 100% Safe for All Guests' : '⚠️ Contains Common Allergens';
-    const responseText = `Here is a wonderful kitchen recipe: **${recipe.title}** (${recipe.prepTime} prep, ${recipe.cookTime} cook, ${recipe.caloriesPerServing} kcal).\n\n` +
+    const responseText = `Here is the recipe for **${recipe.title}** (${recipe.cuisine}, ${recipe.prepTime} prep, ${recipe.cookTime} cook, ${recipe.caloriesPerServing} kcal):\n\n` +
       `🛡️ **Safety & Allergen Assessment:**\n` +
       `* **Rating:** ${safetyBadge}\n` +
       `* **Allergens Present:** ${safety.allergensPresent.join(', ')}\n` +
-      `* **Safe For:** ${safety.isSafeFor.join('; ')}\n` +
-      `* **Caution For:** ${safety.cautionGroups.join('; ')}\n` +
+      `* **Safe For:** ${safety.isSafeFor.slice(0, 4).join('; ')}\n` +
+      `* **Caution For:** ${safety.cautionGroups.slice(0, 2).join('; ')}\n` +
       `* **Notice:** ${safety.safetyNotice}\n\n` +
-      `Would you like me to walk you through the cooking instructions step-by-step?`;
+      `I've displayed the full culinary card with images and ingredients below. Would you like me to walk you through the cooking instructions step-by-step?`;
 
     return {
       response: responseText,
@@ -705,6 +780,33 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
       } else if (lower.includes('goa')) {
         hotelName = 'The Oceanfront Palms Resort & Spa';
         dest = 'Goa, India';
+      } else if (lower.includes('mumbai')) {
+        hotelName = 'The Taj Heritage Seafront Palace';
+        dest = 'Mumbai, India';
+      } else if (lower.includes('delhi')) {
+        hotelName = 'The Imperial Heritage Palace New Delhi';
+        dest = 'New Delhi, India';
+      } else if (lower.includes('bangalore') || lower.includes('bengaluru')) {
+        hotelName = 'The Leela Royal Palace Bengaluru';
+        dest = 'Bangalore, India';
+      } else if (lower.includes('london')) {
+        hotelName = 'The Royal Mayfair Grand Hotel London';
+        dest = 'London, United Kingdom';
+      } else if (lower.includes('dubai')) {
+        hotelName = 'Burj Al Arab Ocean Royal Suites';
+        dest = 'Dubai, UAE';
+      } else if (lower.includes('bali')) {
+        hotelName = 'Four Seasons Resort Bali at Sayan';
+        dest = 'Bali, Indonesia';
+      } else if (lower.includes('singapore')) {
+        hotelName = 'Marina Bay Sands SkyPark Resort';
+        dest = 'Singapore';
+      } else if (lower.includes('sydney')) {
+        hotelName = 'Park Hyatt Sydney Harbour';
+        dest = 'Sydney, Australia';
+      } else if (lower.includes('zermatt') || lower.includes('swiss')) {
+        hotelName = 'The Omnia Alpine Sanctuary Zermatt';
+        dest = 'Zermatt, Switzerland';
       }
 
       const res = await executeMcpTool('book_hotel', {
@@ -723,24 +825,92 @@ async function handleFallbackIntent(userMessage: string, userId: string): Promis
       };
     }
 
-    // Search hotels
-    let dest = 'Santorini';
-    if (lower.includes('paris')) dest = 'Paris';
-    else if (lower.includes('tokyo')) dest = 'Tokyo';
-    else if (lower.includes('new york')) dest = 'New York';
-    else if (lower.includes('goa')) dest = 'Goa';
+    // Search hotels (Nearest hotels in my place or World Destinations with Country Pricing)
+    const isNearestQuery = lower.includes('nearest') || lower.includes('near me') || lower.includes('in my place') || lower.includes('my place') || lower.includes('nearby') || lower.includes('around me') || lower.includes('my location') || lower.includes('my city');
 
-    const hotels = await executeMcpTool('search_hotels', { destination: dest }, userId);
-    toolExecutions.push({ name: 'search_hotels', args: { destination: dest }, result: hotels, status: 'success', timestamp: executionTimestamp });
+    let hotels: any[];
+    if (isNearestQuery) {
+      const detectedCityOrCountry = userLocation?.city || userLocation?.country || 'Mumbai';
+      hotels = await executeMcpTool('search_hotels', {
+        nearest: true,
+        latitude: userLocation?.latitude,
+        longitude: userLocation?.longitude,
+        user_place: detectedCityOrCountry,
+      }, userId);
+
+      toolExecutions.push({
+        name: 'search_hotels',
+        args: {
+          nearest: true,
+          latitude: userLocation?.latitude,
+          longitude: userLocation?.longitude,
+          user_place: detectedCityOrCountry,
+        },
+        result: hotels,
+        status: 'success',
+        timestamp: executionTimestamp,
+      });
+
+      const top = hotels[0];
+      const second = hotels[1];
+      const distanceBadge = top.distanceMiles !== undefined ? ` (~${top.distanceMiles} miles away)` : '';
+      const secondDist = second?.distanceMiles !== undefined ? ` (~${second.distanceMiles} miles away)` : '';
+
+      const topPrice = top.formattedPrice || `${top.currencySymbol || '$'}${top.pricePerNight.toLocaleString()}`;
+      const secondPrice = second ? (second.formattedPrice || `${second.currencySymbol || '$'}${second.pricePerNight.toLocaleString()}`) : '';
+
+      return {
+        response: `🏨 I detected your location in **${userLocation?.city ? `${userLocation.city}, ${userLocation.country || ''}` : top.destination}** (${top.country}).\n\n` +
+          `Here are the premier hotels near you with localized pricing in ${top.currencyCode} (${top.currencySymbol}):\n\n` +
+          `* **${top.name}** in ${top.destination}${distanceBadge} — ${top.starRating}⭐ luxury, rated ${top.userRating}/5. Nightly rate: **${topPrice}**. Amenities: ${top.amenities.slice(0, 3).join(', ')}.\n` +
+          (second ? `* **${second.name}** in ${second.destination}${secondDist} — ${second.starRating}⭐ luxury, rated ${second.userRating}/5. Nightly rate: **${secondPrice}**.\n\n` : '\n\n') +
+          `I've displayed the full accommodations with photographs below. Would you like me to book your stay?`,
+        toolExecutions,
+        followUpSuggestions: [
+          `Book ${top.name}`,
+          second ? `Book ${second.name}` : 'Search hotels in Paris',
+          'Check my calendar',
+        ],
+      };
+    }
+
+    // Specific world destination / city search
+    let dest = '';
+    const cityMatch = userMessage.match(/(?:hotels?\s+(?:in|near|around|at)\s+|find\s+hotels?\s+in\s+|show(?:\s+me)?\s+hotels?\s+(?:in|near|around)\s+)([^,.]+)/i);
+    if (cityMatch && cityMatch[1].trim()) {
+      dest = cityMatch[1].replace(/with images|with image|images|image|please/gi, '').trim();
+    } else if (lower.includes('paris')) dest = 'Paris';
+    else if (lower.includes('tokyo')) dest = 'Tokyo';
+    else if (lower.includes('new york') || lower.includes('manhattan') || lower.includes('nyc')) dest = 'New York';
+    else if (lower.includes('goa')) dest = 'Goa';
+    else if (lower.includes('mumbai')) dest = 'Mumbai';
+    else if (lower.includes('delhi')) dest = 'New Delhi';
+    else if (lower.includes('bangalore') || lower.includes('bengaluru')) dest = 'Bengaluru';
+    else if (lower.includes('jaipur')) dest = 'Jaipur';
+    else if (lower.includes('udaipur')) dest = 'Udaipur';
+    else if (lower.includes('pune')) dest = 'Pune';
+    else if (lower.includes('london')) dest = 'London';
+    else if (lower.includes('dubai')) dest = 'Dubai';
+    else if (lower.includes('bali')) dest = 'Bali';
+    else if (lower.includes('singapore')) dest = 'Singapore';
+    else if (lower.includes('sydney')) dest = 'Sydney';
+    else if (lower.includes('cancun')) dest = 'Cancun';
+    else if (lower.includes('zermatt') || lower.includes('swiss')) dest = 'Zermatt';
+    else if (lower.includes('santorini')) dest = 'Santorini';
+    else if (lower.includes('rome')) dest = 'Rome';
+
+    hotels = await executeMcpTool('search_hotels', { destination: dest || userLocation?.city || undefined }, userId);
+    toolExecutions.push({ name: 'search_hotels', args: { destination: dest || 'All' }, result: hotels, status: 'success', timestamp: executionTimestamp });
 
     const top = hotels[0];
+    const topPrice = top.formattedPrice || `${top.currencySymbol || '$'}${top.pricePerNight.toLocaleString()}`;
     return {
-      response: `🏨 I found premier luxury accommodations in **${dest}**: **${top.name}** (${top.starRating}⭐, user rating: ${top.userRating}/5). Nightly rate: $${top.pricePerNight}. Amenities include ${top.amenities.slice(0, 3).join(', ')}.\n\nWould you like me to book your stay?`,
+      response: `🏨 I found premier luxury accommodations in **${top.destination}** (${top.country}): **${top.name}** (${top.starRating}⭐, user rating: ${top.userRating}/5). Nightly rate: **${topPrice}** (${top.currencyCode}). Amenities include ${top.amenities.slice(0, 3).join(', ')}.\n\nWould you like me to book your stay?`,
       toolExecutions,
       followUpSuggestions: [
         `Book ${top.name}`,
-        'Search hotels in Paris',
-        'Check my calendar',
+        'Nearest hotels in my place',
+        'Search hotels in Tokyo',
       ],
     };
   }

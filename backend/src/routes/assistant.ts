@@ -17,11 +17,19 @@ const chatMessageSchema = z.object({
       })
     )
     .default([]),
+  userLocation: z
+    .object({
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      city: z.string().optional(),
+      country: z.string().optional(),
+    })
+    .optional(),
 });
 
 router.post('/chat', authenticateUser, async (req, res, next) => {
   try {
-    const { message, conversationId, history } = chatMessageSchema.parse(req.body);
+    const { message, conversationId, history, userLocation } = chatMessageSchema.parse(req.body);
     const userId = req.user!.id;
 
     let targetConversationId = conversationId;
@@ -45,7 +53,7 @@ router.post('/chat', authenticateUser, async (req, res, next) => {
     await addMessage(targetConversationId, userId, 'user', message, []);
 
     // Process with Gemini AI / Fallback Intent Router
-    const result = await processAssistantMessage(message, history, userId);
+    const result = await processAssistantMessage(message, history, userId, userLocation);
 
     // Persist assistant response and tool execution metadata to database
     await addMessage(

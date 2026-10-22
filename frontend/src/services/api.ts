@@ -116,6 +116,12 @@ export interface MusicTrack {
   genre: string;
   mood?: string;
   preview_url?: string;
+  spotify_url?: string;
+  spotify_uri?: string;
+  spotify_id?: string;
+  spotify_embed_url?: string;
+  full_audio_url?: string;
+  source?: string;
 }
 
 export interface MusicPlaybackState {
@@ -202,15 +208,24 @@ export interface HotelListing {
   destination: string;
   city: string;
   country: string;
+  continent?: string;
+  latitude?: number;
+  longitude?: number;
+  distanceKm?: number;
+  distanceMiles?: number;
   starRating: number;
   userRating: number;
   reviewsCount: number;
   pricePerNight: number;
+  currencySymbol?: string;
+  currencyCode?: string;
+  formattedPrice?: string;
   imageUrl: string;
   gallery: string[];
   roomTypes: Array<{
     type: string;
     price: number;
+    formattedPrice?: string;
     bed: string;
     view: string;
   }>;
@@ -280,13 +295,14 @@ export const api = {
     message: string,
     history: ChatMessage[],
     token: string | null,
-    conversationId?: string
+    conversationId?: string,
+    userLocation?: { latitude?: number; longitude?: number; city?: string; country?: string }
   ) =>
     request<AssistantChatResponse>(
       `${API_BASE}/assistant/chat`,
       {
         method: 'POST',
-        body: JSON.stringify({ message, history, conversationId }),
+        body: JSON.stringify({ message, history, conversationId, userLocation }),
       },
       token
     ),
@@ -533,6 +549,9 @@ export const api = {
   getMusicStatus: (token: string | null) =>
     request<MusicPlaybackState>(`${API_BASE}/music/status`, {}, token),
 
+  searchMusic: (query: string, token: string | null = null) =>
+    request<{ tracks: MusicTrack[] }>(`${API_BASE}/music/search?q=${encodeURIComponent(query)}`, {}, token),
+
   playMusic: (options: { query?: string; artist?: string; genre?: string; mood?: string; trackId?: string }, token: string | null) =>
     request<MusicPlaybackState>(
       `${API_BASE}/music/play`,
@@ -600,12 +619,35 @@ export const api = {
     request<{ reservations: RestaurantReservation[] }>(`${API_BASE}/opentable/reservations`, {}, token),
 
   // --- 🏨 Hotel Bookings ---
-  getHotels: (destination = '', minRating?: number, maxPrice?: number, token: string | null = null) => {
+  getHotels: (
+    destination = '',
+    minRating?: number,
+    maxPrice?: number,
+    continent?: string,
+    nearest?: boolean,
+    lat?: number,
+    lng?: number,
+    place?: string,
+    token: string | null = null
+  ) => {
     const params = new URLSearchParams();
     if (destination) params.set('destination', destination);
     if (minRating) params.set('min_rating', String(minRating));
     if (maxPrice) params.set('max_price', String(maxPrice));
+    if (continent && continent !== 'All') params.set('continent', continent);
+    if (nearest) params.set('nearest', 'true');
+    if (typeof lat === 'number') params.set('lat', String(lat));
+    if (typeof lng === 'number') params.set('lng', String(lng));
+    if (place) params.set('place', place);
     return request<{ hotels: HotelListing[] }>(`${API_BASE}/hotels?${params.toString()}`, {}, token);
+  },
+
+  getNearestHotels: (lat?: number, lng?: number, place?: string, token: string | null = null) => {
+    const params = new URLSearchParams();
+    if (typeof lat === 'number') params.set('lat', String(lat));
+    if (typeof lng === 'number') params.set('lng', String(lng));
+    if (place) params.set('place', place);
+    return request<{ hotels: HotelListing[] }>(`${API_BASE}/hotels/nearest?${params.toString()}`, {}, token);
   },
 
   bookHotel: (data: { hotel_name: string; destination?: string; check_in: string; check_out: string; guests?: number; room_type?: string }, token: string | null) =>

@@ -13,6 +13,9 @@ import {
   Plus,
   Hotel,
   UtensilsCrossed,
+  ExternalLink,
+  MapPin,
+  Flame,
 } from 'lucide-react';
 import { ToolExecution } from '../services/api';
 
@@ -24,102 +27,183 @@ interface AssistantActionCardProps {
 export const AssistantActionCard: React.FC<AssistantActionCardProps> = ({ tool, onSendMessage }) => {
   if (tool.status !== 'success' || !tool.result) return null;
 
-  // 1. 🎵 MUSIC CARD
+  // 1. 🎵 MUSIC CARD (with live Spotify support & complete original playback)
   if (tool.name === 'play_music') {
     const track = tool.result.current_track;
     if (!track) return null;
+    const isSpotify = track.source === 'Spotify' || !!track.spotify_url;
+    const spotifyEmbedSrc = track.spotify_embed_url ||
+      (track.spotify_id ? `https://open.spotify.com/embed/track/${track.spotify_id}?utm_source=generator&theme=0` : null);
+    const fullAudioSrc = track.full_audio_url ||
+      `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent((track.artist || '') + ' ' + (track.title || '') + ' Official Audio')}&autoplay=1`;
+
     return (
-      <div className="mt-3 p-3.5 rounded-2xl bg-gradient-to-r from-[#0F172A] to-[#1E1B4B] border border-cyan-500/40 shadow-xl flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-cyan-500/30 relative">
-            <img src={track.album_art} alt={track.title} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-              <Disc3 className="w-5 h-5 text-cyan-300 animate-spin" style={{ animationDuration: '4s' }} />
+      <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-[#0F172A] via-[#111c38] to-[#1E1B4B] border border-cyan-500/40 shadow-xl space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-cyan-500/30 relative">
+              <img src={track.album_art} alt={track.title} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                <Disc3 className="w-5 h-5 text-cyan-300 animate-spin" style={{ animationDuration: '4s' }} />
+              </div>
+            </div>
+            <div className="overflow-hidden">
+              <div className="flex items-center gap-1.5">
+                {isSpotify ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    SPOTIFY ORIGINAL
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
+                    NOW PLAYING
+                  </span>
+                )}
+                <span className="text-[10px] text-gray-400 truncate">{track.genre}</span>
+              </div>
+              <h4 className="font-bold text-xs text-white truncate">{track.title}</h4>
+              <p className="text-[11px] text-gray-300 truncate">{track.artist} {track.album ? `• ${track.album}` : ''}</p>
             </div>
           </div>
-          <div className="overflow-hidden">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] px-2 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
-                NOW PLAYING
-              </span>
-              <span className="text-[10px] text-gray-400">{track.genre}</span>
-            </div>
-            <h4 className="font-bold text-xs text-white truncate">{track.title}</h4>
-            <p className="text-[11px] text-gray-300 truncate">{track.artist}</p>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {track.spotify_url && (
+              <a
+                href={track.spotify_uri || track.spotify_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1.5 rounded-xl bg-[#1DB954]/20 hover:bg-[#1DB954]/30 text-[#1DB954] border border-[#1DB954]/40 text-xs font-semibold transition-all flex items-center gap-1.5"
+                title="Open in Spotify App"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Spotify</span>
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('music-status-updated', {
+                    detail: { current_track: track, is_playing: !tool.result.is_playing },
+                  })
+                );
+                if (onSendMessage) {
+                  onSendMessage(tool.result.is_playing ? 'pause music' : 'resume music');
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs transition-all flex items-center gap-1.5 shrink-0"
+            >
+              {tool.result.is_playing ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              <span>{tool.result.is_playing ? 'Pause' : 'Play'}</span>
+            </button>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onSendMessage && onSendMessage(tool.result.is_playing ? 'pause music' : 'resume music')}
-          className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs transition-all flex items-center gap-1.5 shrink-0"
-        >
-          {tool.result.is_playing ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-          <span>{tool.result.is_playing ? 'Pause' : 'Play'}</span>
-        </button>
+        {/* Embedded Official Spotify Player or Complete Audio Stream */}
+        {spotifyEmbedSrc ? (
+          <div className="overflow-hidden rounded-xl border border-emerald-500/30 shadow-lg">
+            <iframe
+              src={spotifyEmbedSrc}
+              width="100%"
+              height="80"
+              frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              title={`Spotify: ${track.title}`}
+              className="w-full"
+            />
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-cyan-500/30 shadow-lg">
+            <iframe
+              src={fullAudioSrc}
+              width="100%"
+              height="80"
+              frameBorder="0"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              loading="lazy"
+              title={`Full Song: ${track.title}`}
+              className="w-full"
+            />
+          </div>
+        )}
       </div>
     );
   }
 
-  // 2. 🍳 RECIPE & ALLERGEN SAFETY CARD
+  // 2. 🍳 RECIPE & ALLERGEN SAFETY CARDS (with photography for any dishes)
   if (tool.name === 'search_recipes' || tool.name === 'get_recipe_details') {
-    const recipe = Array.isArray(tool.result) ? tool.result[0] : tool.result;
-    if (!recipe) return null;
-    const isSafe = recipe.allergenSafety?.safetyRating === 'Safe for All';
+    const recipes = Array.isArray(tool.result) ? tool.result : [tool.result];
+    if (recipes.length === 0 || !recipes[0]) return null;
 
     return (
-      <div className="mt-3 rounded-2xl bg-[#0F172A] border border-cyan-500/40 overflow-hidden shadow-xl space-y-3">
-        <div className="relative h-36 w-full">
-          <img src={recipe.imageUrl} alt={recipe.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-          <div className="absolute top-2.5 right-2.5">
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md ${
-                isSafe
-                  ? 'bg-emerald-950/80 border border-emerald-400/50 text-emerald-300'
-                  : 'bg-amber-950/80 border border-amber-400/50 text-amber-300'
-              }`}
-            >
-              {isSafe ? <ShieldCheck className="w-3 h-3 text-emerald-400" /> : <ShieldAlert className="w-3 h-3 text-amber-400" />}
-              <span>{isSafe ? 'Safe for All Guests' : 'Contains Allergens'}</span>
-            </span>
-          </div>
-          <div className="absolute bottom-2.5 left-3">
-            <span className="text-[10px] font-semibold text-cyan-300 block">{recipe.cuisine}</span>
-            <h4 className="font-bold text-sm text-white">{recipe.title}</h4>
-          </div>
-        </div>
+      <div className="mt-3 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {recipes.slice(0, 2).map((recipe: any) => {
+            const isSafe = recipe.allergenSafety?.safetyRating === 'Safe for All';
+            return (
+              <div
+                key={recipe.id}
+                className="rounded-2xl bg-[#0F172A] border border-cyan-500/40 overflow-hidden shadow-xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="relative h-36 w-full">
+                    <img src={recipe.imageUrl} alt={recipe.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                    <div className="absolute top-2.5 right-2.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md ${
+                          isSafe
+                            ? 'bg-emerald-950/80 border border-emerald-400/50 text-emerald-300'
+                            : 'bg-amber-950/80 border border-amber-400/50 text-amber-300'
+                        }`}
+                      >
+                        {isSafe ? <ShieldCheck className="w-3 h-3 text-emerald-400" /> : <ShieldAlert className="w-3 h-3 text-amber-400" />}
+                        <span>{isSafe ? 'Safe for All' : 'Contains Allergens'}</span>
+                      </span>
+                    </div>
+                    <div className="absolute bottom-2.5 left-3 right-3">
+                      <span className="text-[10px] font-semibold text-cyan-300 block">{recipe.cuisine}</span>
+                      <h4 className="font-bold text-xs text-white truncate">{recipe.title}</h4>
+                    </div>
+                  </div>
 
-        <div className="px-3.5 pb-3.5 space-y-2 text-xs">
-          <div className="flex items-center gap-3 text-[11px] text-gray-300">
-            <span className="flex items-center gap-1 font-mono">
-              <Clock className="w-3 h-3 text-cyan-400" /> {recipe.totalTime}
-            </span>
-            <span>•</span>
-            <span className="text-orange-300">{recipe.caloriesPerServing} kcal</span>
-            <span>•</span>
-            <span className="text-purple-300">{recipe.servings} Servings</span>
-          </div>
+                  <div className="p-3 space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-[11px] text-gray-300">
+                      <span className="flex items-center gap-1 font-mono text-cyan-400">
+                        <Clock className="w-3 h-3" /> {recipe.totalTime}
+                      </span>
+                      <span className="text-orange-300 flex items-center gap-1">
+                        <Flame className="w-3 h-3" /> {recipe.caloriesPerServing} kcal
+                      </span>
+                    </div>
 
-          <div
-            className={`p-2.5 rounded-xl text-[11px] space-y-1 ${
-              isSafe ? 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-200' : 'bg-amber-950/40 border border-amber-500/30 text-amber-200'
-            }`}
-          >
-            <div className="flex items-center gap-1 font-bold">
-              <AlertTriangle className="w-3 h-3" />
-              <span>Safety & Dietary Notice:</span>
-            </div>
-            <p className="leading-tight">{recipe.allergenSafety?.safetyNotice}</p>
-          </div>
+                    <div
+                      className={`p-2 rounded-xl text-[10px] space-y-0.5 ${
+                        isSafe ? 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-200' : 'bg-amber-950/40 border border-amber-500/30 text-amber-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1 font-bold">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Safety & Allergen Profile:</span>
+                      </div>
+                      <p className="line-clamp-2 leading-tight">{recipe.allergenSafety?.safetyNotice}</p>
+                    </div>
+                  </div>
+                </div>
 
-          <button
-            type="button"
-            onClick={() => onSendMessage && onSendMessage(`Show step-by-step instructions for ${recipe.title}`)}
-            className="w-full py-1.5 rounded-xl bg-gray-800 hover:bg-cyan-500 hover:text-black text-cyan-300 font-semibold text-[11px] transition-all text-center"
-          >
-            Start Cooking with Alexa
-          </button>
+                <div className="px-3 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => onSendMessage && onSendMessage(`Show step-by-step instructions for ${recipe.title}`)}
+                    className="w-full py-1.5 rounded-xl bg-gray-800 hover:bg-cyan-500 hover:text-black text-cyan-300 font-semibold text-[11px] transition-all text-center"
+                  >
+                    Start Cooking with Alexa
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -276,21 +360,34 @@ export const AssistantActionCard: React.FC<AssistantActionCardProps> = ({ tool, 
     if (tool.name === 'search_hotels') {
       const hotels = Array.isArray(tool.result) ? tool.result : [];
       if (hotels.length === 0) return null;
+      const isNearest = hotels.some((h: any) => h.distanceMiles !== undefined);
+
       return (
         <div className="mt-3 space-y-2.5">
           <span className="font-bold text-blue-400 flex items-center gap-1.5 text-xs">
             <Hotel className="w-3.5 h-3.5" />
-            Luxury Hotel Accommodations
+            {isNearest ? 'Nearest Luxury Accommodations to You' : 'World Luxury Hotel Accommodations'}
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {hotels.slice(0, 2).map((h: any) => (
               <div key={h.id} className="rounded-xl bg-[#0F172A] border border-blue-500/30 overflow-hidden shadow-lg flex flex-col justify-between">
-                <div className="relative h-28 w-full">
+                <div className="relative h-32 w-full">
                   <img src={h.imageUrl} alt={h.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                  
+                  {/* Rating Badge */}
                   <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-blue-300">
                     ⭐ {h.userRating}/5 ({h.reviewsCount})
                   </div>
+
+                  {/* Nearest / Distance Badge */}
+                  {h.distanceMiles !== undefined && (
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-blue-950/80 border border-blue-400/50 backdrop-blur-md text-[10px] font-bold text-blue-200 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-cyan-400" />
+                      <span>{h.distanceMiles < 100 ? `${h.distanceMiles} mi away` : `${h.city}, ${h.country}`}</span>
+                    </div>
+                  )}
+
                   <div className="absolute bottom-2 left-2 right-2">
                     <span className="text-[9px] text-blue-300 font-semibold">{h.destination}</span>
                     <h5 className="font-bold text-xs text-white truncate">{h.name}</h5>

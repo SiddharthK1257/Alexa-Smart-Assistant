@@ -122,6 +122,11 @@ export const searchHotelsSchema = z.object({
   destination: z.string().optional(),
   min_rating: z.number().min(1).max(5).optional(),
   max_price: z.number().positive().optional(),
+  continent: z.string().optional(),
+  nearest: z.boolean().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  user_place: z.string().optional(),
 });
 
 export const bookHotelSchema = z.object({
@@ -384,7 +389,7 @@ export async function executeMcpTool(toolName: string, args: any, userId: string
       // 🍳 Kitchen & Recipe Tools
       case 'search_recipes': {
         const validated = searchRecipesSchema.parse(args);
-        result = recipeService.searchRecipes(validated.query, validated.cuisine, validated.dietary);
+        result = await recipeService.searchRecipes(validated.query, validated.cuisine, validated.dietary);
         break;
       }
 
@@ -463,7 +468,20 @@ export async function executeMcpTool(toolName: string, args: any, userId: string
       // 🏨 Hotel & Travel Tools
       case 'search_hotels': {
         const validated = searchHotelsSchema.parse(args);
-        result = hotelService.searchHotels(validated.destination, validated.min_rating, validated.max_price);
+        if (validated.nearest || (typeof validated.latitude === 'number' && typeof validated.longitude === 'number') || validated.user_place) {
+          result = hotelService.searchNearestHotels(
+            validated.latitude,
+            validated.longitude,
+            validated.user_place || validated.destination
+          );
+        } else {
+          result = hotelService.searchHotels(
+            validated.destination,
+            validated.min_rating,
+            validated.max_price,
+            validated.continent
+          );
+        }
         break;
       }
 
