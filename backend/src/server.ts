@@ -46,6 +46,22 @@ app.use((req, _res, next) => {
   next();
 });
 
+// 0. Root Endpoint for Render / Load balancer / Browser verification
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'Alexa+ Smart Assistant Backend',
+    mcpServer: config.MCP_SERVER_NAME,
+    version: config.MCP_SERVER_VERSION,
+    port: Number(process.env.PORT) || config.PORT || 10000,
+    health: '/health',
+    mcp: config.MCP_ENDPOINT_PATH,
+    documentation: '/mcp/tools',
+    privacy: '/privacy',
+    terms: '/terms',
+  });
+});
+
 // 1. Health check endpoint (available at /health and /api/health)
 app.use('/health', healthRouter);
 app.use('/api/health', healthRouter);
@@ -120,22 +136,30 @@ app.use(errorHandler);
 
 // Server startup if executed directly
 if (process.env.NODE_ENV !== 'test') {
-  const port = Number(process.env.PORT) || config.PORT || 10000;
+  const rawPort = process.env.PORT || config.PORT || 10000;
+  const port = Number(rawPort) || 10000;
   const host = '0.0.0.0';
-  app.listen(port, host, () => {
+
+  const server = app.listen(port, host, () => {
     console.log(`
 🚀 ============================================================
-   Alexa+ Smart Assistant (Supabase Edition) Backend Started
+   Alexa+ Smart Assistant Backend Bound & Listening!
+   Host:            ${host}
    Port:            ${port}
    Environment:     ${config.NODE_ENV}
-   Health:          http://localhost:${port}/health
-   MCP Endpoint:    http://localhost:${port}/mcp
-   MCP Tools:       http://localhost:${port}/mcp/tools
-   OAuth Auth:      http://localhost:${port}/.well-known/oauth-authorization-server
-   OAuth Resource:  http://localhost:${port}/.well-known/oauth-protected-resource
+   Root URL:        http://${host}:${port}/
+   Health:          http://${host}:${port}/health
+   MCP Endpoint:    http://${host}:${port}/mcp
+   MCP Tools:       http://${host}:${port}/mcp/tools
+   OAuth Auth:      http://${host}:${port}/.well-known/oauth-authorization-server
+   OAuth Resource:  http://${host}:${port}/.well-known/oauth-protected-resource
    AI Model:        ${config.GEMINI_MODEL}
    Supabase URL:    ${config.SUPABASE_URL}
 ============================================================
     `);
+  });
+
+  server.on('error', (error: any) => {
+    console.error('❌ Server failed to bind or encountered a runtime error:', error);
   });
 }

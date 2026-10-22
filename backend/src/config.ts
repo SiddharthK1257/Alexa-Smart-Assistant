@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 dotenv.config();
 
 const configSchema = z.object({
-  PORT: z.coerce.number().default(4000),
+  PORT: z.coerce.number().default(10000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   FRONTEND_URL: z.string().default('https://alexa-smart-assistant.vercel.app'),
 

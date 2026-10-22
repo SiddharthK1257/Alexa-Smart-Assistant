@@ -49,6 +49,11 @@ export const dbPool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
+// Non-fatal error handling on pool to prevent uncaught process termination
+dbPool.on('error', (err) => {
+  console.warn('⚠️ Supabase dbPool connection warning (non-fatal):', err.message);
+});
+
 // Helper for direct SQL queries with typed results
 export async function query<T extends pg.QueryResultRow = any>(
   text: string,

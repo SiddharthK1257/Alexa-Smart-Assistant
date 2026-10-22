@@ -14,8 +14,9 @@
     "build:backend": "npm --workspace=backend run build",
     "build:frontend": "npm --workspace=frontend run build",
     "build": "npm --workspace=backend run build",
+    "prestart": "npm --workspace=backend run build",
     "start": "node backend/dist/server.js",
-    "start:backend": "node backend/dist/server.js",
+    "start:backend": "npm --workspace=backend run start",
     "test:backend": "npm --workspace=backend run test",
     "test": "npm run test:backend",
     "db:migrate": "npm --workspace=backend run db:migrate"
