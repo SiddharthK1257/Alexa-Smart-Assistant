@@ -120,8 +120,9 @@ app.use(errorHandler);
 
 // Server startup if executed directly
 if (process.env.NODE_ENV !== 'test') {
-  const port = config.PORT;
-  app.listen(port, () => {
+  const port = Number(process.env.PORT) || config.PORT || 10000;
+  const host = '0.0.0.0';
+  app.listen(port, host, () => {
     console.log(`
 🚀 ============================================================
    Alexa+ Smart Assistant (Supabase Edition) Backend Started
