@@ -32,7 +32,7 @@ interface AuthContextType {
   isPasswordRecovery: boolean;
   clearError: () => void;
   clearPasswordRecovery: () => void;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, displayName?: string) => Promise<SignUpResult>;
   signInWithOtp: (email: string) => Promise<void>;
   verifyOtp: (email: string, token: string, type?: EmailOtpType) => Promise<void>;
@@ -41,7 +41,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  quickDemoLogin: () => Promise<void>;
+  quickDemoLogin: () => Promise<string | null>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Standard Email + Password Sign In
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<string | null> => {
     setAuthError(null);
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
@@ -173,7 +173,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         await loadProfile(data.user.id, data.user);
       }
+      return data.session.access_token;
     }
+    return null;
   };
 
   // Sign Up with Email and Password (uses backend registration to ensure verified status, then signs in)
@@ -405,14 +407,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Instant Verified Demo Login for rapid zero-friction evaluation
-  const quickDemoLogin = async () => {
+  const quickDemoLogin = async (): Promise<string | null> => {
     setAuthError(null);
     try {
-      await login('alexa.demo@example.com', 'AlexaDemo2026!');
+      return await login('alexa.demo@example.com', 'AlexaDemo2026!');
     } catch (err: any) {
       // Fallback to secondary test account
       try {
-        await login('siddharthtiwary012@gmail.com', 'AlexaDemo2026!');
+        return await login('siddharthtiwary012@gmail.com', 'AlexaDemo2026!');
       } catch {
         throw err;
       }

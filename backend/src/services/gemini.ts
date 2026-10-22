@@ -352,7 +352,7 @@ export async function processAssistantMessage(
       ],
     });
 
-    const generateWithTimeout = (p: Promise<any>, timeoutMs = 8000) => {
+    const generateWithTimeout = (p: Promise<any>, timeoutMs = 12000) => {
       return Promise.race([
         p,
         new Promise((_, reject) =>
@@ -361,7 +361,38 @@ export async function processAssistantMessage(
       ]);
     };
 
-    let response = await generateWithTimeout(model.generateContent({ contents }), 8000);
+    const candidateModelNames = [
+      config.GEMINI_MODEL,
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3-flash-preview',
+      'gemini-flash-latest',
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    let activeModel: any = null;
+    let response: any = null;
+    let lastGenError: any = null;
+
+    for (const modelName of candidateModelNames) {
+      try {
+        const m = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: SYSTEM_INSTRUCTION,
+          tools: geminiTools as any,
+        });
+        response = await generateWithTimeout(m.generateContent({ contents }), 12000);
+        activeModel = m;
+        break;
+      } catch (err: any) {
+        lastGenError = err;
+        console.warn(`Gemini model ${modelName} unavailable (${err.message}), trying next candidate...`);
+      }
+    }
+
+    if (!response || !activeModel) {
+      throw lastGenError || new Error('All generative AI models exhausted');
+    }
+
     let candidate = response.response.candidates?.[0];
 
     const functionCalls = candidate?.content?.parts
@@ -417,7 +448,17 @@ export async function processAssistantMessage(
         parts: functionResponseParts,
       });
 
-      const followUpResponse = await generateWithTimeout(model.generateContent({ contents }), 8000);
+      let followUpResponse: any;
+      try {
+        followUpResponse = await generateWithTimeout(activeModel.generateContent({ contents }), 8000);
+      } catch {
+        // Fallback to primary candidate if follow-up fails
+        const fallbackModel = genAI.getGenerativeModel({
+          model: 'gemini-3.5-flash',
+          systemInstruction: SYSTEM_INSTRUCTION,
+        });
+        followUpResponse = await generateWithTimeout(fallbackModel.generateContent({ contents }), 8000);
+      }
       const finalCandidate = followUpResponse.response.candidates?.[0];
       const textParts = finalCandidate?.content?.parts?.filter((p: any) => !!p.text).map((p: any) => p.text) || [];
       const finalVocalText = textParts.join(' ').trim() || 'I have processed that for you.';

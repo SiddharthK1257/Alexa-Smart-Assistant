@@ -15,7 +15,8 @@ import {
   Radio,
   StopCircle,
 } from 'lucide-react';
-import { api, ChatMessage, ToolExecution } from '../services/api';
+import { api, BACKEND_URL, ChatMessage, ToolExecution } from '../services/api';
+import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
@@ -95,6 +96,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
         { timeout: 6000, maximumAge: 120000 }
       );
     }
+    // 3. Proactively warm up backend service if sleeping on Render
+    fetch(`${BACKEND_URL}/health`).catch(() => {});
   }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -191,12 +194,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const messageContent = (textToSend || input).trim();
     if (!messageContent || isProcessing) return;
 
-    // If user is not yet logged in, auto-login with instant demo session so voice request works seamlessly
-    if (!user) {
+    let activeToken = token;
+
+    // If user is not yet logged in or token missing, auto-login with instant verified demo session
+    if (!user || !activeToken) {
       try {
-        await quickDemoLogin();
+        const demoToken = await quickDemoLogin();
+        if (demoToken) {
+          activeToken = demoToken;
+        } else {
+          const { data: sessionData } = await supabase.auth.getSession();
+          activeToken = sessionData.session?.access_token || null;
+        }
       } catch (err) {
         console.warn('Auto demo login for voice request:', err);
+      }
+    }
+
+    if (!activeToken) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        activeToken = sessionData.session?.access_token || null;
+      } catch {
+        // ignore
       }
     }
 
@@ -233,7 +253,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       const res = await api.sendChatMessage(
         messageContent,
         history,
-        token,
+        activeToken,
         currentConversationId || undefined,
         userCoords || undefined
       );
@@ -267,10 +287,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
       // Vocal text-to-speech output
       speak(res.response);
     } catch (err: any) {
+      const isNetworkError = err.message === 'Failed to fetch' || err.name === 'TypeError';
       const errorMessage: MessageItem = {
         id: String(Date.now() + 1),
         role: 'assistant',
-        content: `Error: ${err.message || 'Failed to process request'}. Please check your database connection or login state.`,
+        content: isNetworkError
+          ? 'Connecting to Alexa+ backend server... The backend service on Render is waking up. Please retry in a few moments.'
+          : `Error: ${err.message || 'Failed to process request'}.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isError: true,
       };

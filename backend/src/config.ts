@@ -13,7 +13,7 @@ const configSchema = z.object({
 
   // Gemini AI
   GEMINI_API_KEY: z.string().default(''),
-  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.5-flash'),
 
   // YouTube Data API v3 (for official music search)
   YOUTUBE_API_KEY: z.string().default(''),
@@ -22,7 +22,7 @@ const configSchema = z.object({
   SUPABASE_URL: z.string().default('https://qlwzprsqudhzqzxyzmyf.supabase.co'),
   SUPABASE_PUBLISHABLE_KEY: z.string().default('sb_publishable_Kt2zjmH9zSjU13qS8nqn6Q_SLcOuob8'),
   SUPABASE_SECRET_KEY: z.string().optional(),
-  DATABASE_URL: z.string().default(''),
+  DATABASE_URL: z.string().default('postgresql://postgres.qlwzprsqudhzqzxyzmyf:9608300407Sid@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres'),
 
   // MCP Server
   MCP_SERVER_NAME: z.string().default('Alexa+ Smart Assistant MCP Server'),

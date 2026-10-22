@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 const DEFAULT_BACKEND_URL = import.meta.env.DEV ? '' : 'https://alexa-smart-assistant.onrender.com';
 export const BACKEND_URL = (import.meta.env.VITE_API_URL || DEFAULT_BACKEND_URL).replace(/\/+$/, '');
 const API_BASE = `${BACKEND_URL}/api`;
@@ -275,14 +277,34 @@ async function request<T>(endpoint: string, options: RequestInit = {}, token?: s
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+  let activeToken = token;
+  if (!activeToken) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      activeToken = data.session?.access_token || null;
+    } catch {
+      // ignore
+    }
   }
 
-  const res = await fetch(endpoint, {
-    ...options,
-    headers,
-  });
+  if (activeToken) {
+    headers.set('Authorization', `Bearer ${activeToken}`);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      ...options,
+      headers,
+    });
+  } catch (initialErr: any) {
+    // If network error (e.g. Render waking up from sleep or transient proxy timeout), wait 1.2s and retry once
+    await new Promise(r => setTimeout(r, 1200));
+    res = await fetch(endpoint, {
+      ...options,
+      headers,
+    });
+  }
 
   const data = await res.json().catch(() => ({}));
 
