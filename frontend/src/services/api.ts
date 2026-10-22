@@ -1,7 +1,19 @@
 import { supabase } from './supabaseClient';
 
-const DEFAULT_BACKEND_URL = import.meta.env.DEV ? '' : 'https://alexa-smart-assistant.onrender.com';
-export const BACKEND_URL = (import.meta.env.VITE_API_URL || DEFAULT_BACKEND_URL).replace(/\/+$/, '');
+const resolveBackendUrl = (): string => {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+  // If building or running in production, ensure localhost is never used
+  if (import.meta.env.PROD) {
+    if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+      return 'https://alexa-smart-assistant.onrender.com';
+    }
+    return envUrl;
+  }
+  // In development, empty string leverages Vite's dev proxy (which routes to localhost:4000)
+  return envUrl || '';
+};
+
+export const BACKEND_URL = resolveBackendUrl();
 const API_BASE = `${BACKEND_URL}/api`;
 
 export interface ChatMessage {
@@ -719,13 +731,13 @@ export const api = {
 
   // OAuth Metadata & Flow
   getOAuthAuthorizationServerMetadata: () =>
-    request<any>('/.well-known/oauth-authorization-server'),
+    request<any>(`${BACKEND_URL}/.well-known/oauth-authorization-server`),
 
   getOAuthProtectedResourceMetadata: () =>
-    request<any>('/.well-known/oauth-protected-resource'),
+    request<any>(`${BACKEND_URL}/.well-known/oauth-protected-resource`),
 
   revokeOAuthToken: (tokenToRevoke: string, tokenTypeHint?: 'access_token' | 'refresh_token') =>
-    request<{ revoked: boolean }>('/oauth/revoke', {
+    request<{ revoked: boolean }>(`${BACKEND_URL}/oauth/revoke`, {
       method: 'POST',
       body: JSON.stringify({ token: tokenToRevoke, token_type_hint: tokenTypeHint }),
     }),

@@ -28,9 +28,26 @@ export const authCodeStore = new Map<string, AuthCodeData>();
 export const accessTokenStore = new Map<string, StoredAccessToken>();
 export const refreshTokenStore = new Map<string, { userId: string; clientId: string; scope: string; expiresAt: number }>();
 
+function resolveOAuthBaseUrl(req: Request): string {
+  let baseUrl = config.OAUTH_ISSUER_URL;
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '') as string;
+  const isCloudHost = host && !host.includes('localhost') && !host.includes('127.0.0.1');
+
+  if (isCloudHost || config.NODE_ENV === 'production') {
+    if (!baseUrl || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+      if (host) {
+        const proto = (req.headers['x-forwarded-proto'] || 'https') as string;
+        return `${proto}://${host}`;
+      }
+      return 'https://alexa-smart-assistant.onrender.com';
+    }
+  }
+  return baseUrl || 'https://alexa-smart-assistant.onrender.com';
+}
+
 // 1. RFC 8414 OAuth 2.0 Authorization Server Metadata
-export function getAuthorizationServerMetadata(_req: Request, res: Response): void {
-  const baseUrl = config.OAUTH_ISSUER_URL;
+export function getAuthorizationServerMetadata(req: Request, res: Response): void {
+  const baseUrl = resolveOAuthBaseUrl(req);
 
   res.setHeader('Content-Type', 'application/json');
   res.json({
@@ -60,8 +77,8 @@ export function getAuthorizationServerMetadata(_req: Request, res: Response): vo
 }
 
 // 2. RFC 9470 OAuth 2.0 Protected Resource Metadata
-export function getProtectedResourceMetadata(_req: Request, res: Response): void {
-  const baseUrl = config.OAUTH_ISSUER_URL;
+export function getProtectedResourceMetadata(req: Request, res: Response): void {
+  const baseUrl = resolveOAuthBaseUrl(req);
 
   res.setHeader('Content-Type', 'application/json');
   res.json({

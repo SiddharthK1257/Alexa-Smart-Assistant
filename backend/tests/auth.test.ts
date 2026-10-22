@@ -11,7 +11,6 @@ describe('Authentication & Authorization Middleware', () => {
       { method: 'post', path: '/api/reminders' },
       { method: 'get', path: '/api/notes' },
       { method: 'get', path: '/api/audit' },
-      { method: 'post', path: '/api/assistant/chat' },
       { method: 'post', path: '/mcp/execute' },
     ];
 

@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { authenticateUser } from '../middleware/auth.js';
+import { optionalAuth } from '../middleware/auth.js';
 import * as deviceService from '../services/deviceService.js';
 import * as musicService from '../services/musicService.js';
 import * as recipeService from '../services/recipeService.js';
@@ -9,13 +9,16 @@ import * as calendarService from '../services/calendarService.js';
 
 export const featuresRouter = Router();
 
-// Protect all feature endpoints
-featuresRouter.use(authenticateUser);
+// Allow resilient optional auth across feature endpoints with demo fallback
+featuresRouter.use(optionalAuth);
+
+const DEFAULT_DEMO_USER_ID = 'a0000000-0000-0000-0000-000000000001';
+const getUserId = (req: Request): string => req.user?.id || DEFAULT_DEMO_USER_ID;
 
 // --- 📱 DEVICES ENDPOINTS ---
 featuresRouter.get('/devices', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const devices = await deviceService.getDevices(req.user!.id);
+    const devices = await deviceService.getDevices(getUserId(req));
     res.json({ devices });
   } catch (err) {
     next(err);
@@ -24,7 +27,7 @@ featuresRouter.get('/devices', async (req: Request, res: Response, next: NextFun
 
 featuresRouter.get('/devices/suggestions', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const suggestions = await deviceService.getSuggestedDevices(req.user!.id);
+    const suggestions = await deviceService.getSuggestedDevices(getUserId(req));
     res.json(suggestions);
   } catch (err) {
     next(err);
@@ -35,7 +38,7 @@ featuresRouter.post('/devices/connect', async (req: Request, res: Response, next
   try {
     const { device_name } = req.body;
     if (!device_name) return res.status(400).json({ error: 'device_name is required' });
-    const device = await deviceService.connectDevice(req.user!.id, device_name);
+    const device = await deviceService.connectDevice(getUserId(req), device_name);
     res.json({ success: true, device });
   } catch (err) {
     next(err);
@@ -46,7 +49,7 @@ featuresRouter.post('/devices/control', async (req: Request, res: Response, next
   try {
     const { device_name, ...settings } = req.body;
     if (!device_name) return res.status(400).json({ error: 'device_name is required' });
-    const device = await deviceService.controlDevice(req.user!.id, device_name, settings);
+    const device = await deviceService.controlDevice(getUserId(req), device_name, settings);
     res.json({ success: true, device });
   } catch (err) {
     next(err);
@@ -84,7 +87,7 @@ featuresRouter.get('/music/config', async (_req: Request, res: Response) => {
 
 featuresRouter.get('/music/status', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const state = await musicService.getPlaybackStatus(req.user!.id);
+    const state = await musicService.getPlaybackStatus(getUserId(req));
     res.json(state);
   } catch (err) {
     next(err);
@@ -93,7 +96,7 @@ featuresRouter.get('/music/status', async (req: Request, res: Response, next: Ne
 
 featuresRouter.post('/music/play', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const state = await musicService.playMusic(req.user!.id, req.body);
+    const state = await musicService.playMusic(getUserId(req), req.body);
     res.json(state);
   } catch (err) {
     next(err);
@@ -105,15 +108,15 @@ featuresRouter.post('/music/control', async (req: Request, res: Response, next: 
     const { action, volume } = req.body;
     let state;
     if (action === 'pause' || action === 'stop') {
-      state = await musicService.pauseMusic(req.user!.id);
+      state = await musicService.pauseMusic(getUserId(req));
     } else if (action === 'resume') {
-      state = await musicService.resumeMusic(req.user!.id);
+      state = await musicService.resumeMusic(getUserId(req));
     } else if (action === 'next') {
-      state = await musicService.nextTrack(req.user!.id);
+      state = await musicService.nextTrack(getUserId(req));
     } else if (action === 'volume' && typeof volume === 'number') {
-      state = await musicService.setVolume(req.user!.id, volume);
+      state = await musicService.setVolume(getUserId(req), volume);
     } else {
-      state = await musicService.getPlaybackStatus(req.user!.id);
+      state = await musicService.getPlaybackStatus(getUserId(req));
     }
     res.json(state);
   } catch (err) {
@@ -144,7 +147,7 @@ featuresRouter.get('/recipes/:id', (req: Request, res: Response) => {
 // --- 🍽️ OPENTABLE DINING ENDPOINTS ---
 featuresRouter.get('/opentable/account', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const account = await openTableService.getOpenTableAccount(req.user!.id);
+    const account = await openTableService.getOpenTableAccount(getUserId(req));
     res.json({ isLinked: !!account?.is_linked, account });
   } catch (err) {
     next(err);
@@ -155,7 +158,7 @@ featuresRouter.post('/opentable/link', async (req: Request, res: Response, next:
   try {
     const { email, phone, full_name } = req.body;
     if (!email) return res.status(400).json({ error: 'email is required' });
-    const account = await openTableService.linkOpenTableAccount(req.user!.id, {
+    const account = await openTableService.linkOpenTableAccount(getUserId(req), {
       email,
       phone,
       full_name,
@@ -185,7 +188,7 @@ featuresRouter.post('/opentable/book', async (req: Request, res: Response, next:
     if (!restaurant_name || !date || !time) {
       return res.status(400).json({ error: 'restaurant_name, date, and time are required' });
     }
-    const result = await openTableService.bookRestaurant(req.user!.id, {
+    const result = await openTableService.bookRestaurant(getUserId(req), {
       restaurantName: restaurant_name,
       partySize: party_size ? parseInt(party_size, 10) : 2,
       date,
@@ -203,7 +206,7 @@ featuresRouter.post('/opentable/book', async (req: Request, res: Response, next:
 
 featuresRouter.get('/opentable/reservations', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const reservations = await openTableService.getUserReservations(req.user!.id);
+    const reservations = await openTableService.getUserReservations(getUserId(req));
     res.json({ reservations });
   } catch (err) {
     next(err);
@@ -243,7 +246,7 @@ featuresRouter.post('/hotels/book', async (req: Request, res: Response, next: Ne
     if (!hotel_name || !check_in || !check_out) {
       return res.status(400).json({ error: 'hotel_name, check_in, and check_out are required' });
     }
-    const result = await hotelService.bookHotel(req.user!.id, {
+    const result = await hotelService.bookHotel(getUserId(req), {
       hotelName: hotel_name,
       destination,
       checkIn: check_in,
@@ -259,7 +262,7 @@ featuresRouter.post('/hotels/book', async (req: Request, res: Response, next: Ne
 
 featuresRouter.get('/hotels/bookings', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const bookings = await hotelService.getUserHotelBookings(req.user!.id);
+    const bookings = await hotelService.getUserHotelBookings(getUserId(req));
     res.json({ bookings });
   } catch (err) {
     next(err);
@@ -271,7 +274,7 @@ featuresRouter.get('/calendar', async (req: Request, res: Response, next: NextFu
   try {
     const { start_date, end_date } = req.query;
     const events = await calendarService.getCalendarEvents(
-      req.user!.id,
+      getUserId(req),
       start_date as string,
       end_date as string
     );
@@ -287,7 +290,7 @@ featuresRouter.post('/calendar', async (req: Request, res: Response, next: NextF
     if (!title || !start_time || !end_time) {
       return res.status(400).json({ error: 'title, start_time, and end_time are required' });
     }
-    const event = await calendarService.addCalendarEvent(req.user!.id, {
+    const event = await calendarService.addCalendarEvent(getUserId(req), {
       title,
       event_type: event_type || 'personal',
       start_time,
