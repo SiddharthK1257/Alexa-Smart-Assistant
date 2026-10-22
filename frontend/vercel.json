@@ -1,0 +1,51 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://alexa-smart-assistant.onrender.com/api/$1"
+    },
+    {
+      "source": "/mcp/(.*)",
+      "destination": "https://alexa-smart-assistant.onrender.com/mcp/$1"
+    },
+    {
+      "source": "/mcp",
+      "destination": "https://alexa-smart-assistant.onrender.com/mcp"
+    },
+    {
+      "source": "/health",
+      "destination": "https://alexa-smart-assistant.onrender.com/health"
+    },
+    {
+      "source": "/health/(.*)",
+      "destination": "https://alexa-smart-assistant.onrender.com/health/$1"
+    },
+    {
+      "source": "/.well-known/(.*)",
+      "destination": "https://alexa-smart-assistant.onrender.com/.well-known/$1"
+    },
+    {
+      "source": "/oauth/(.*)",
+      "destination": "https://alexa-smart-assistant.onrender.com/oauth/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}

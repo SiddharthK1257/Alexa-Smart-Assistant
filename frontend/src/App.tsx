@@ -38,6 +38,7 @@ import { PrivacyView } from './components/PrivacyView';
 import { TermsView } from './components/TermsView';
 import { AuthModal } from './components/AuthModal';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { BACKEND_URL } from './services/api';
 import { MusicPlayerView } from './components/MusicPlayerView';
 import { RecipeHubView } from './components/RecipeHubView';
 import { DevicesHubView } from './components/DevicesHubView';
@@ -528,10 +529,10 @@ const AppShell: React.FC = () => {
             Alexa+ Smart Assistant (Supabase Edition) — Model Context Protocol Streamable HTTP & Gemini AI
           </span>
           <div className="flex items-center gap-4">
-            <a href="/health" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
+            <a href={BACKEND_URL ? `${BACKEND_URL}/health` : '/health'} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
               Health Status
             </a>
-            <a href="/mcp" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
+            <a href={BACKEND_URL ? `${BACKEND_URL}/mcp` : '/mcp'} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
               MCP Spec
             </a>
             <Link to="/privacy" className="hover:text-cyan-400 transition-colors">

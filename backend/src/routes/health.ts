@@ -19,7 +19,7 @@ router.get('/', async (_req, res) => {
 
   const isHealthy = dbStatus === 'healthy';
 
-  res.status(isHealthy ? 200 : 503).json({
+  res.status(200).json({
     status: isHealthy ? 'ok' : 'degraded',
     service: 'Alexa+ Smart Assistant Backend',
     mcpServer: config.MCP_SERVER_NAME,

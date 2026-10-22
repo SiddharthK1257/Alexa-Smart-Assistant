@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: alexa-smart-assistant
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://alexa-smart-assistant.vercel.app
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        value: https://qlwzprsqudhzqzxyzmyf.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_Kt2zjmH9zSjU13qS8nqn6Q_SLcOuob8
+      - key: DATABASE_URL
+        sync: false
+      - key: MCP_SERVER_NAME
+        value: Alexa+ Smart Assistant MCP Server
+      - key: MCP_SERVER_VERSION
+        value: 1.0.0
+      - key: MCP_ENDPOINT_PATH
+        value: /mcp
+      - key: OAUTH_ISSUER_URL
+        value: https://alexa-smart-assistant.onrender.com
+      - key: OAUTH_CLIENT_ID
+        value: alexa-plus-client
+      - key: OAUTH_CLIENT_SECRET
+        generateValue: true
+      - key: OAUTH_REDIRECT_URI
+        value: https://pitangui.amazon.com/api/skill/link/prototype

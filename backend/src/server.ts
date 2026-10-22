@@ -27,7 +27,11 @@ export const app = express();
 
 // Middlewares
 app.use(cors({
-  origin: '*',
+  origin: (_origin, callback) => {
+    // Reflect origin to support localhost, Vercel deployments, and external MCP clients
+    callback(null, true);
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'mcp-session-id', 'apikey'],
 }));

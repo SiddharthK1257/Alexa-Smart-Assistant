@@ -1,4 +1,6 @@
-const API_BASE = '/api';
+const DEFAULT_BACKEND_URL = import.meta.env.DEV ? '' : 'https://alexa-smart-assistant.onrender.com';
+export const BACKEND_URL = (import.meta.env.VITE_API_URL || DEFAULT_BACKEND_URL).replace(/\/+$/, '');
+const API_BASE = `${BACKEND_URL}/api`;
 
 export interface ChatMessage {
   role: 'user' | 'model' | 'assistant' | 'system';
@@ -504,14 +506,14 @@ export const api = {
     request<{ auditEvents: AuditEventItem[] }>(`${API_BASE}/audit?limit=25`, {}, token),
 
   // System & Health
-  getHealth: () => request<any>('/health'),
+  getHealth: () => request<any>(`${BACKEND_URL}/health`),
 
   // MCP
-  getMcpTools: () => request<{ tools: Array<{ name: string; description: string }> }>('/mcp/tools'),
+  getMcpTools: () => request<{ tools: Array<{ name: string; description: string }> }>(`${BACKEND_URL}/mcp/tools`),
 
   executeMcpTool: (tool: string, args: any, token: string | null) =>
     request<any>(
-      '/mcp/execute',
+      `${BACKEND_URL}/mcp/execute`,
       {
         method: 'POST',
         body: JSON.stringify({ tool, arguments: args }),

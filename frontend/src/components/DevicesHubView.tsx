@@ -23,7 +23,7 @@ import {
   Play,
   ShieldCheck,
 } from 'lucide-react';
-import { api, SmartDevice, SuggestedDevice } from '../services/api';
+import { api, SmartDevice, SuggestedDevice, BACKEND_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export interface RealHardwareDevice {
@@ -64,7 +64,7 @@ export const DevicesHubView: React.FC = () => {
   const measureNetworkPing = async () => {
     const start = performance.now();
     try {
-      await fetch('/api/health', { cache: 'no-store' });
+      await fetch(`${BACKEND_URL}/api/health`, { cache: 'no-store' });
       const rtt = Math.round(performance.now() - start);
       setNetworkPing(rtt);
     } catch {

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session, EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../services/supabaseClient';
+import { BACKEND_URL } from '../services/api';
 
 export interface UserProfile {
   id: string;
@@ -187,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // First try reliable backend registration to guarantee verified status without SMTP rate limits
-      const regRes = await fetch('/api/auth/register', {
+      const regRes = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -274,7 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthError(null);
     const sanitizedEmail = email.trim().toLowerCase();
 
-    const res = await fetch('/api/auth/reset-password', {
+    const res = await fetch(`${BACKEND_URL}/api/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
